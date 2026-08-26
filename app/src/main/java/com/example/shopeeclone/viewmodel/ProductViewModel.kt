@@ -14,6 +14,7 @@ class ProductViewModel(
     val products = mutableStateOf<List<Product>>(emptyList())
     val isLoading = mutableStateOf(false)
     val searchQuery = mutableStateOf("")
+    val errorMessage = mutableStateOf<String?>(null)
 
     init {
         loadProducts()
@@ -23,6 +24,7 @@ class ProductViewModel(
         viewModelScope.launch {
             isLoading.value = true
             products.value = repository.getProducts()
+            errorMessage.value = repository.lastError
             isLoading.value = false
         }
     }
@@ -32,8 +34,13 @@ class ProductViewModel(
         viewModelScope.launch {
             products.value = if (query.isBlank()) repository.getProducts()
             else repository.searchProducts(query)
+            errorMessage.value = repository.lastError
         }
     }
 
-    suspend fun getProduct(id: String): Product? = repository.getProductById(id)
+    suspend fun getProduct(id: String): Product? {
+        val result = repository.getProductById(id)
+        errorMessage.value = repository.lastError
+        return result
+    }
 }

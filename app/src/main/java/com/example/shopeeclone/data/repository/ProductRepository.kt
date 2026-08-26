@@ -1,14 +1,13 @@
 package com.example.shopeeclone.data.repository
 
+import android.util.Log
 import com.example.shopeeclone.data.model.Product
 import com.example.shopeeclone.data.remote.SupabaseClient
 import io.github.jan.supabase.postgrest.postgrest
-import io.github.jan.supabase.postgrest.query.filter.FilterOperator
 
 class ProductRepository(
     private val client: io.github.jan.supabase.SupabaseClient = SupabaseClient.client
 ) {
-    // Sample data so the UI is browsable before Supabase is configured/populated.
     private val sampleProducts = listOf(
         Product("1", "Wireless Earbuds", "Bluetooth 5.3, noise cancelling", 29.99, 19.99, "", "Electronics", "seller1", "TechStore", 120, 4.7, 850),
         Product("2", "Running Shoes", "Lightweight breathable mesh", 45.00, null, "", "Fashion", "seller2", "SportZone", 60, 4.5, 320),
@@ -17,10 +16,16 @@ class ProductRepository(
         Product("5", "Desk Lamp", "LED adjustable brightness", 15.00, 12.00, "", "Home", "seller4", "HomeEssentials", 50, 4.4, 200)
     )
 
+    var lastError: String? = null
+        private set
+
     suspend fun getProducts(): List<Product> = try {
         val remote = client.postgrest["products"].select().decodeList<Product>()
+        lastError = null
         if (remote.isEmpty()) sampleProducts else remote
     } catch (e: Exception) {
+        Log.e("ProductRepository", "Failed to fetch products from Supabase", e)
+        lastError = e.message ?: e.toString()
         sampleProducts
     }
 

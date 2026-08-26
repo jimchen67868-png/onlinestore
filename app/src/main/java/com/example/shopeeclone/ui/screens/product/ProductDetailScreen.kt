@@ -26,9 +26,12 @@ fun ProductDetailScreen(
 ) {
     var product by remember { mutableStateOf<Product?>(null) }
     var quantity by remember { mutableStateOf(1) }
+    var isFetching by remember { mutableStateOf(true) }
 
     LaunchedEffect(productId) {
+        isFetching = true
         product = productViewModel.getProduct(productId)
+        isFetching = false
     }
 
     Scaffold(
@@ -102,7 +105,19 @@ fun ProductDetailScreen(
                 }
             }
         } ?: Box(Modifier.fillMaxSize().padding(padding), contentAlignment = Alignment.Center) {
-            CircularProgressIndicator()
+            if (isFetching) {
+                CircularProgressIndicator()
+            } else {
+                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                    Text("Couldn't load this product.", fontWeight = FontWeight.Bold)
+                    productViewModel.errorMessage.value?.let {
+                        Spacer(Modifier.height(8.dp))
+                        Text(it, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.error)
+                    }
+                    Spacer(Modifier.height(16.dp))
+                    Button(onClick = onBack) { Text("Go Back") }
+                }
+            }
         }
     }
 }
