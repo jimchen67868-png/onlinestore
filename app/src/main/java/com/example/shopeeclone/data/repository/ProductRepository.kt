@@ -34,4 +34,36 @@ class ProductRepository(
 
     suspend fun searchProducts(query: String): List<Product> =
         getProducts().filter { it.name.contains(query, ignoreCase = true) }
+
+    suspend fun getProductsForSeller(sellerId: String): List<Product> = try {
+        val result = client.postgrest["products"].select {
+            filter { eq("seller_id", sellerId) }
+        }.decodeList<Product>()
+        lastError = null
+        result
+    } catch (e: Exception) {
+        Log.e("ProductRepository", "Failed to fetch seller's products", e)
+        lastError = e.message ?: e.toString()
+        emptyList()
+    }
+
+    suspend fun updateProduct(product: Product): Result<Unit> = try {
+        client.postgrest["products"].update(product) {
+            filter { eq("id", product.id) }
+        }
+        Result.success(Unit)
+    } catch (e: Exception) {
+        Log.e("ProductRepository", "Failed to update product", e)
+        Result.failure(e)
+    }
+
+    suspend fun deleteProduct(id: String): Result<Unit> = try {
+        client.postgrest["products"].delete {
+            filter { eq("id", id) }
+        }
+        Result.success(Unit)
+    } catch (e: Exception) {
+        Log.e("ProductRepository", "Failed to delete product", e)
+        Result.failure(e)
+    }
 }
