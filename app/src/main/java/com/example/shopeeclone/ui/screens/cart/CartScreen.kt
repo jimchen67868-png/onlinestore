@@ -55,7 +55,7 @@ fun CartScreen(
             }
         } else {
             LazyColumn(modifier = Modifier.fillMaxSize().padding(padding)) {
-                items(viewModel.items.value) { item ->
+                items(viewModel.items.value, key = { it.product.id }) { item ->
                     CartItemRow(
                         item = item,
                         onIncrease = { viewModel.updateQuantity(item.product.id, item.quantity + 1) },

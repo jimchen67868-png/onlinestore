@@ -14,6 +14,7 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.shopeeclone.data.model.Product
 import com.example.shopeeclone.viewmodel.CartViewModel
 import com.example.shopeeclone.viewmodel.ProductViewModel
+import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -27,6 +28,8 @@ fun ProductDetailScreen(
     var product by remember { mutableStateOf<Product?>(null) }
     var quantity by remember { mutableStateOf(1) }
     var isFetching by remember { mutableStateOf(true) }
+    val snackbarHostState = remember { SnackbarHostState() }
+    val coroutineScope = rememberCoroutineScope()
 
     LaunchedEffect(productId) {
         isFetching = true
@@ -35,6 +38,7 @@ fun ProductDetailScreen(
     }
 
     Scaffold(
+        snackbarHost = { SnackbarHost(snackbarHostState) },
         topBar = {
             TopAppBar(
                 title = { Text("Product Details") },
@@ -91,6 +95,9 @@ fun ProductDetailScreen(
                     OutlinedButton(
                         onClick = {
                             cartViewModel.addToCart(p, quantity)
+                            coroutineScope.launch {
+                                snackbarHostState.showSnackbar("Added to cart")
+                            }
                         },
                         modifier = Modifier.weight(1f)
                     ) { Text("Add to Cart") }
