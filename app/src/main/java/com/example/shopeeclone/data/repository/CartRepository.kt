@@ -1,17 +1,43 @@
 package com.example.shopeeclone.data.repository
 
+import android.content.Context
+import android.content.SharedPreferences
 import com.example.shopeeclone.data.model.CartItem
 import com.example.shopeeclone.data.model.Order
 import com.example.shopeeclone.data.model.OrderStatus
 import com.example.shopeeclone.data.remote.SupabaseClient
 import io.github.jan.supabase.postgrest.postgrest
-import io.github.jan.supabase.postgrest.query.Columns
+import kotlinx.serialization.encodeToString
+import kotlinx.serialization.decodeFromString
+import kotlinx.serialization.json.Json
 import java.util.UUID
 
-// Cart lives in memory (per-session); swap for Room/local DB if you want it to persist.
 object CartRepository {
+    private const val PREFS_NAME = "shopeeclone_cart"
+    private const val KEY_ITEMS = "cart_items"
+
+    private var prefs: SharedPreferences? = null
+    private val json = Json { ignoreUnknownKeys = true }
     private val _items = mutableListOf<CartItem>()
     val items: List<CartItem> get() = _items
+
+    fun init(context: Context) {
+        if (prefs != null) return
+        prefs = context.applicationContext.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+        val saved = prefs?.getString(KEY_ITEMS, null)
+        if (!saved.isNullOrBlank()) {
+            try {
+                _items.clear()
+                _items.addAll(json.decodeFromString<List<CartItem>>(saved))
+            } catch (e: Exception) {
+                _items.clear()
+            }
+        }
+    }
+
+    private fun persist() {
+        prefs?.edit()?.putString(KEY_ITEMS, json.encodeToString(_items.toList()))?.apply()
+    }
 
     fun add(item: CartItem) {
         val existing = _items.find { it.product.id == item.product.id }
@@ -21,18 +47,24 @@ object CartRepository {
         } else {
             _items.add(item)
         }
+        persist()
     }
 
     fun remove(productId: String) {
         _items.removeAll { it.product.id == productId }
+        persist()
     }
 
     fun updateQuantity(productId: String, quantity: Int) {
         val index = _items.indexOfFirst { it.product.id == productId }
         if (index != -1) _items[index] = _items[index].copy(quantity = quantity)
+        persist()
     }
 
-    fun clear() = _items.clear()
+    fun clear() {
+        _items.clear()
+        persist()
+    }
 
     fun total(): Double = _items.sumOf { it.subtotal }
 }
