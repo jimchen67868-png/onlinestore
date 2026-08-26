@@ -47,6 +47,7 @@ dependencies {
     implementation("io.github.jan-tennert.supabase:postgrest-kt")
     implementation("io.github.jan-tennert.supabase:auth-kt")
     implementation("io.github.jan-tennert.supabase:storage-kt")
+    // Ktor engine — pinned to match the Ktor version Supabase 3.1.4 depends on internally
     implementation("io.ktor:ktor-client-android:3.1.2")
 
     // Serialization (needed by Supabase for request/response models)

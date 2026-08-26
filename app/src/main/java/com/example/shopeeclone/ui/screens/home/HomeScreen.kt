@@ -17,6 +17,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
+import coil.compose.AsyncImage
 import com.example.shopeeclone.data.model.Product
 import com.example.shopeeclone.viewmodel.ProductViewModel
 
@@ -80,12 +81,23 @@ fun ProductCard(product: Product, onClick: () -> Unit) {
             .background(MaterialTheme.colorScheme.surface, RoundedCornerShape(8.dp))
             .padding(8.dp)
     ) {
-        Box(
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(120.dp)
-                .background(MaterialTheme.colorScheme.background, RoundedCornerShape(6.dp))
-        )
+        if (product.imageUrl.isNotBlank()) {
+            AsyncImage(
+                model = product.imageUrl,
+                contentDescription = product.name,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(120.dp)
+                    .background(MaterialTheme.colorScheme.background, RoundedCornerShape(6.dp))
+            )
+        } else {
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(120.dp)
+                    .background(MaterialTheme.colorScheme.background, RoundedCornerShape(6.dp))
+            )
+        }
         Spacer(Modifier.height(6.dp))
         Text(product.name, maxLines = 2, style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.Medium)
         Spacer(Modifier.height(4.dp))

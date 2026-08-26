@@ -10,7 +10,9 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.viewinterop.AndroidView
 import androidx.lifecycle.viewmodel.compose.viewModel
+import coil.compose.AsyncImage
 import com.example.shopeeclone.data.model.Product
 import com.example.shopeeclone.viewmodel.CartViewModel
 import com.example.shopeeclone.viewmodel.ProductViewModel
@@ -52,12 +54,38 @@ fun ProductDetailScreen(
     ) { padding ->
         product?.let { p ->
             Column(modifier = Modifier.fillMaxSize().padding(padding).padding(16.dp)) {
-                Box(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(220.dp)
-                        .background(MaterialTheme.colorScheme.background)
-                )
+                if (p.imageUrl.isNotBlank()) {
+                    AsyncImage(
+                        model = p.imageUrl,
+                        contentDescription = p.name,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(220.dp)
+                            .background(MaterialTheme.colorScheme.background)
+                    )
+                } else {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(220.dp)
+                            .background(MaterialTheme.colorScheme.background)
+                    )
+                }
+
+                if (p.videoUrl.isNotBlank()) {
+                    Spacer(Modifier.height(8.dp))
+                    AndroidView(
+                        modifier = Modifier.fillMaxWidth().height(200.dp),
+                        factory = { ctx ->
+                            android.widget.VideoView(ctx).apply {
+                                setVideoURI(android.net.Uri.parse(p.videoUrl))
+                                setMediaController(android.widget.MediaController(ctx).also { it.setAnchorView(this) })
+                                setOnPreparedListener { it.isLooping = false }
+                                start()
+                            }
+                        }
+                    )
+                }
                 Spacer(Modifier.height(16.dp))
                 Text(p.name, style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
                 Spacer(Modifier.height(6.dp))

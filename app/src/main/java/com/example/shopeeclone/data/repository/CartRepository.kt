@@ -12,6 +12,9 @@ import kotlinx.serialization.decodeFromString
 import kotlinx.serialization.json.Json
 import java.util.UUID
 
+// Cart persists to SharedPreferences as JSON so it survives app restarts.
+// Call CartRepository.init(context) once, e.g. in MainActivity.onCreate,
+// before any screen reads or writes the cart.
 object CartRepository {
     private const val PREFS_NAME = "shopeeclone_cart"
     private const val KEY_ITEMS = "cart_items"
@@ -22,7 +25,7 @@ object CartRepository {
     val items: List<CartItem> get() = _items
 
     fun init(context: Context) {
-        if (prefs != null) return
+        if (prefs != null) return // already initialized
         prefs = context.applicationContext.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
         val saved = prefs?.getString(KEY_ITEMS, null)
         if (!saved.isNullOrBlank()) {
@@ -30,6 +33,7 @@ object CartRepository {
                 _items.clear()
                 _items.addAll(json.decodeFromString<List<CartItem>>(saved))
             } catch (e: Exception) {
+                // Corrupt or outdated saved data — start with an empty cart rather than crash.
                 _items.clear()
             }
         }

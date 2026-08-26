@@ -11,6 +11,7 @@ data class Product(
     val price: Double = 0.0,
     @SerialName("discount_price") val discountPrice: Double? = null,
     @SerialName("image_url") val imageUrl: String = "",
+    @SerialName("video_url") val videoUrl: String = "",
     val category: String = "",
     @SerialName("seller_id") val sellerId: String = "",
     @SerialName("seller_name") val sellerName: String = "",
