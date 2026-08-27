@@ -20,6 +20,7 @@ fun CheckoutScreen(
 ) {
     var address by remember { mutableStateOf("") }
     var paymentMethod by remember { mutableStateOf("Cash on Delivery") }
+    var voucherInput by remember { mutableStateOf("") }
 
     LaunchedEffect(viewModel.orderPlacedSuccessfully.value) {
         if (viewModel.orderPlacedSuccessfully.value) onOrderPlaced()
@@ -53,12 +54,49 @@ fun CheckoutScreen(
             }
 
             Spacer(Modifier.height(16.dp))
+            Text("Voucher", fontWeight = FontWeight.Bold)
+            Spacer(Modifier.height(8.dp))
+            val voucher = viewModel.appliedVoucher.value
+            if (voucher != null) {
+                Row(verticalAlignment = androidx.compose.ui.Alignment.CenterVertically) {
+                    Text("\"${voucher.code}\" applied — you saved $${"%.2f".format(viewModel.discountAmount())}", color = MaterialTheme.colorScheme.primary)
+                    Spacer(Modifier.width(8.dp))
+                    TextButton(onClick = { viewModel.removeVoucher(); voucherInput = "" }) { Text("Remove") }
+                }
+            } else {
+                Row(verticalAlignment = androidx.compose.ui.Alignment.CenterVertically) {
+                    OutlinedTextField(
+                        value = voucherInput,
+                        onValueChange = { voucherInput = it },
+                        placeholder = { Text("Enter voucher code") },
+                        singleLine = true,
+                        modifier = Modifier.weight(1f)
+                    )
+                    Spacer(Modifier.width(8.dp))
+                    Button(
+                        onClick = { viewModel.applyVoucher(voucherInput) },
+                        enabled = voucherInput.isNotBlank() && !viewModel.isValidatingVoucher.value
+                    ) {
+                        Text(if (viewModel.isValidatingVoucher.value) "..." else "Apply")
+                    }
+                }
+                viewModel.voucherErrorMessage.value?.let {
+                    Spacer(Modifier.height(4.dp))
+                    Text(it, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.error)
+                }
+            }
+
+            Spacer(Modifier.height(16.dp))
             Text("Order Summary", fontWeight = FontWeight.Bold)
             viewModel.items.value.forEach {
                 Text("${it.product.name} × ${it.quantity} — $${"%.2f".format(it.subtotal)}")
             }
             Spacer(Modifier.height(8.dp))
-            Text("Total: $${"%.2f".format(viewModel.total())}", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+            Text("Subtotal: $${"%.2f".format(viewModel.total())}")
+            if (viewModel.discountAmount() > 0) {
+                Text("Voucher discount: -$${"%.2f".format(viewModel.discountAmount())}", color = MaterialTheme.colorScheme.primary)
+            }
+            Text("Total: $${"%.2f".format(viewModel.finalTotal())}", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
 
             Spacer(Modifier.weight(1f))
             Button(

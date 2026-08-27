@@ -139,6 +139,7 @@ class SellerViewModel(
 @Composable
 fun SellerDashboardScreen(
     onBack: () -> Unit,
+    onManageVouchers: () -> Unit,
     viewModel: SellerViewModel = viewModel()
 ) {
     val context = LocalContext.current
@@ -196,7 +197,10 @@ fun SellerDashboardScreen(
         topBar = {
             TopAppBar(
                 title = { Text("Seller Dashboard") },
-                navigationIcon = { IconButton(onClick = onBack) { Icon(Icons.Default.ArrowBack, contentDescription = "Back") } }
+                navigationIcon = { IconButton(onClick = onBack) { Icon(Icons.Default.ArrowBack, contentDescription = "Back") } },
+                actions = {
+                    TextButton(onClick = onManageVouchers) { Text("Vouchers") }
+                }
             )
         }
     ) { padding ->

@@ -76,12 +76,21 @@ object CartRepository {
 class OrderRepository(
     private val client: io.github.jan.supabase.SupabaseClient = SupabaseClient.client
 ) {
-    suspend fun placeOrder(userId: String, items: List<CartItem>, address: String): Result<Order> = try {
+    suspend fun placeOrder(
+        userId: String,
+        items: List<CartItem>,
+        address: String,
+        discountAmount: Double = 0.0,
+        voucherCode: String = ""
+    ): Result<Order> = try {
+        val subtotal = items.sumOf { it.subtotal }
         val order = Order(
             id = UUID.randomUUID().toString(),
             userId = userId,
             items = items,
-            totalAmount = items.sumOf { it.subtotal },
+            totalAmount = (subtotal - discountAmount).coerceAtLeast(0.0),
+            discountAmount = discountAmount,
+            voucherCode = voucherCode,
             status = OrderStatus.PENDING,
             shippingAddress = address
         )

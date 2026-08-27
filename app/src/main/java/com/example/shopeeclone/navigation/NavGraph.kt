@@ -17,6 +17,7 @@ import com.example.shopeeclone.ui.screens.orders.OrderHistoryScreen
 import com.example.shopeeclone.ui.screens.profile.ProfileScreen
 import com.example.shopeeclone.ui.screens.profile.EditProfileScreen
 import com.example.shopeeclone.ui.screens.seller.SellerDashboardScreen
+import com.example.shopeeclone.ui.screens.seller.SellerVoucherScreen
 import com.example.shopeeclone.ui.screens.shop.SellerShopScreen
 import com.example.shopeeclone.ui.screens.shop.FollowedShopsScreen
 
@@ -111,7 +112,14 @@ fun ShopeeNavGraph(navController: NavHostController = rememberNavController()) {
         }
 
         composable(Screen.SellerDashboard.route) {
-            SellerDashboardScreen(onBack = { navController.popBackStack() })
+            SellerDashboardScreen(
+                onBack = { navController.popBackStack() },
+                onManageVouchers = { navController.navigate(Screen.SellerVouchers.route) }
+            )
+        }
+
+        composable(Screen.SellerVouchers.route) {
+            SellerVoucherScreen(onBack = { navController.popBackStack() })
         }
 
         composable(
