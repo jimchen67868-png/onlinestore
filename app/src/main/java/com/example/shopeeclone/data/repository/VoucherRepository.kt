@@ -12,35 +12,36 @@ class VoucherRepository(
 ) {
     private val dateFormat = SimpleDateFormat("yyyy-MM-dd", Locale.US)
 
-    /** Validates a voucher code against the current cart subtotal. Returns the voucher if usable. */
-    suspend fun validateVoucher(code: String, subtotal: Double): Result<Voucher> = try {
-        val voucher = client.postgrest["vouchers"].select {
-            filter { eq("code", code.trim().uppercase()) }
-        }.decodeSingleOrNull<Voucher>()
-            ?: return Result.failure(Exception("Voucher code not found"))
+    suspend fun validateVoucher(code: String, subtotal: Double): Result<Voucher> {
+        return try {
+            val voucher = client.postgrest["vouchers"].select {
+                filter { eq("code", code.trim().uppercase()) }
+            }.decodeSingleOrNull<Voucher>()
+                ?: return Result.failure(Exception("Voucher code not found"))
 
-        voucher.expiresAt?.let { expiryStr ->
-            try {
-                val expiry = dateFormat.parse(expiryStr)
-                if (expiry != null && expiry.before(Date())) {
-                    return Result.failure(Exception("This voucher has expired"))
+            voucher.expiresAt?.let { expiryStr ->
+                try {
+                    val expiry = dateFormat.parse(expiryStr)
+                    if (expiry != null && expiry.before(Date())) {
+                        return Result.failure(Exception("This voucher has expired"))
+                    }
+                } catch (e: Exception) {
+                    // Unparseable date — ignore expiry check rather than block a valid voucher.
                 }
-            } catch (e: Exception) {
-                // Unparseable date — ignore expiry check rather than block a valid voucher.
             }
-        }
 
-        if (voucher.usageLimit > 0 && voucher.timesUsed >= voucher.usageLimit) {
-            return Result.failure(Exception("This voucher has reached its usage limit"))
-        }
+            if (voucher.usageLimit > 0 && voucher.timesUsed >= voucher.usageLimit) {
+                return Result.failure(Exception("This voucher has reached its usage limit"))
+            }
 
-        if (subtotal < voucher.minSpend) {
-            return Result.failure(Exception("Minimum spend of $${"%.2f".format(voucher.minSpend)} required"))
-        }
+            if (subtotal < voucher.minSpend) {
+                return Result.failure(Exception("Minimum spend of $${"%.2f".format(voucher.minSpend)} required"))
+            }
 
-        Result.success(voucher)
-    } catch (e: Exception) {
-        Result.failure(e)
+            Result.success(voucher)
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
     }
 
     fun calculateDiscount(voucher: Voucher, subtotal: Double): Double {
@@ -49,7 +50,7 @@ class VoucherRepository(
         else
             voucher.discountValue
         val capped = voucher.maxDiscount?.let { minOf(raw, it) } ?: raw
-        return minOf(capped, subtotal) // never discount more than the order itself
+        return minOf(capped, subtotal)
     }
 
     suspend fun incrementUsage(voucher: Voucher): Result<Unit> = try {
