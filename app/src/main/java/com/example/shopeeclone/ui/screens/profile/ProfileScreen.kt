@@ -16,6 +16,7 @@ fun ProfileScreen(
     onOrderHistoryClick: () -> Unit,
     onSellerDashboardClick: () -> Unit,
     onEditProfileClick: () -> Unit,
+    onFollowedShopsClick: () -> Unit,
     onBack: () -> Unit
 ) {
     Scaffold(
@@ -35,6 +36,11 @@ fun ProfileScreen(
             ListItem(
                 headlineContent = { Text("My Orders") },
                 modifier = Modifier.clickableRow(onOrderHistoryClick)
+            )
+            Divider()
+            ListItem(
+                headlineContent = { Text("Followed Shops") },
+                modifier = Modifier.clickableRow(onFollowedShopsClick)
             )
             Divider()
             ListItem(

@@ -1,6 +1,7 @@
 package com.example.shopeeclone.ui.screens.product
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
@@ -9,11 +10,13 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.lifecycle.viewmodel.compose.viewModel
 import coil.compose.AsyncImage
 import com.example.shopeeclone.data.model.Product
+import com.example.shopeeclone.data.repository.FollowRepository
 import com.example.shopeeclone.viewmodel.CartViewModel
 import com.example.shopeeclone.viewmodel.ProductViewModel
 import kotlinx.coroutines.launch
@@ -24,12 +27,16 @@ fun ProductDetailScreen(
     productId: String,
     onBack: () -> Unit,
     onGoToCart: () -> Unit,
+    onVisitShop: (String, String) -> Unit,
     productViewModel: ProductViewModel = viewModel(),
-    cartViewModel: CartViewModel = viewModel()
+    cartViewModel: CartViewModel = viewModel(),
+    followRepository: FollowRepository = FollowRepository()
 ) {
     var product by remember { mutableStateOf<Product?>(null) }
     var quantity by remember { mutableStateOf(1) }
     var isFetching by remember { mutableStateOf(true) }
+    var isFollowing by remember { mutableStateOf(false) }
+    var isTogglingFollow by remember { mutableStateOf(false) }
     val snackbarHostState = remember { SnackbarHostState() }
     val coroutineScope = rememberCoroutineScope()
 
@@ -37,6 +44,7 @@ fun ProductDetailScreen(
         isFetching = true
         product = productViewModel.getProduct(productId)
         isFetching = false
+        product?.let { isFollowing = followRepository.isFollowing(it.sellerId) }
     }
 
     Scaffold(
@@ -105,7 +113,32 @@ fun ProductDetailScreen(
                         )
                     }
                 }
-                Text("${p.soldCount} sold · ★${p.rating} · Sold by ${p.sellerName}", style = MaterialTheme.typography.bodySmall)
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    modifier = Modifier.clickable { onVisitShop(p.sellerId, p.sellerName) }
+                ) {
+                    Text(
+                        "${p.soldCount} sold · ★${p.rating} · Sold by ${p.sellerName}",
+                        style = MaterialTheme.typography.bodySmall.copy(textDecoration = TextDecoration.Underline)
+                    )
+                }
+                Spacer(Modifier.height(4.dp))
+                OutlinedButton(
+                    onClick = {
+                        isTogglingFollow = true
+                        coroutineScope.launch {
+                            if (isFollowing) {
+                                followRepository.unfollow(p.sellerId).onSuccess { isFollowing = false }
+                            } else {
+                                followRepository.follow(p.sellerId, p.sellerName).onSuccess { isFollowing = true }
+                            }
+                            isTogglingFollow = false
+                        }
+                    },
+                    enabled = !isTogglingFollow
+                ) {
+                    Text(if (isFollowing) "Following" else "+ Follow Shop")
+                }
                 Spacer(Modifier.height(16.dp))
                 Text("Description", fontWeight = FontWeight.Bold)
                 Text(p.description, style = MaterialTheme.typography.bodyMedium)

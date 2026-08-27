@@ -8,6 +8,7 @@ import io.github.jan.supabase.postgrest.postgrest
 class ProductRepository(
     private val client: io.github.jan.supabase.SupabaseClient = SupabaseClient.client
 ) {
+    // Sample data so the UI is browsable before Supabase is configured/populated.
     private val sampleProducts = listOf(
         Product(id = "1", name = "Wireless Earbuds", description = "Bluetooth 5.3, noise cancelling", price = 29.99, discountPrice = 19.99, category = "Electronics", sellerId = "seller1", sellerName = "TechStore", stock = 120, rating = 4.7, soldCount = 850),
         Product(id = "2", name = "Running Shoes", description = "Lightweight breathable mesh", price = 45.00, discountPrice = null, category = "Fashion", sellerId = "seller2", sellerName = "SportZone", stock = 60, rating = 4.5, soldCount = 320),
@@ -16,6 +17,8 @@ class ProductRepository(
         Product(id = "5", name = "Desk Lamp", description = "LED adjustable brightness", price = 15.00, discountPrice = 12.00, category = "Home", sellerId = "seller4", sellerName = "HomeEssentials", stock = 50, rating = 4.4, soldCount = 200)
     )
 
+    // Exposes the last fetch failure (if any) so the UI can show a real message
+    // instead of silently falling back and leaving the user guessing.
     var lastError: String? = null
         private set
 

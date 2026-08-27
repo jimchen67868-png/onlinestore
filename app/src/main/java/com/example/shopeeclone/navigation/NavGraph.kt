@@ -17,6 +17,8 @@ import com.example.shopeeclone.ui.screens.orders.OrderHistoryScreen
 import com.example.shopeeclone.ui.screens.profile.ProfileScreen
 import com.example.shopeeclone.ui.screens.profile.EditProfileScreen
 import com.example.shopeeclone.ui.screens.seller.SellerDashboardScreen
+import com.example.shopeeclone.ui.screens.shop.SellerShopScreen
+import com.example.shopeeclone.ui.screens.shop.FollowedShopsScreen
 
 @Composable
 fun ShopeeNavGraph(navController: NavHostController = rememberNavController()) {
@@ -60,7 +62,10 @@ fun ShopeeNavGraph(navController: NavHostController = rememberNavController()) {
             ProductDetailScreen(
                 productId = productId,
                 onBack = { navController.popBackStack() },
-                onGoToCart = { navController.navigate(Screen.Cart.route) }
+                onGoToCart = { navController.navigate(Screen.Cart.route) },
+                onVisitShop = { sellerId, sellerName ->
+                    navController.navigate(Screen.SellerShop.createRoute(sellerId, sellerName))
+                }
             )
         }
 
@@ -96,6 +101,7 @@ fun ShopeeNavGraph(navController: NavHostController = rememberNavController()) {
                 onOrderHistoryClick = { navController.navigate(Screen.OrderHistory.route) },
                 onSellerDashboardClick = { navController.navigate(Screen.SellerDashboard.route) },
                 onEditProfileClick = { navController.navigate(Screen.EditProfile.route) },
+                onFollowedShopsClick = { navController.navigate(Screen.FollowedShops.route) },
                 onBack = { navController.popBackStack() }
             )
         }
@@ -106,6 +112,33 @@ fun ShopeeNavGraph(navController: NavHostController = rememberNavController()) {
 
         composable(Screen.SellerDashboard.route) {
             SellerDashboardScreen(onBack = { navController.popBackStack() })
+        }
+
+        composable(
+            route = Screen.SellerShop.route,
+            arguments = listOf(
+                navArgument("sellerId") { type = NavType.StringType },
+                navArgument("sellerName") { type = NavType.StringType }
+            )
+        ) { backStackEntry ->
+            val sellerId = backStackEntry.arguments?.getString("sellerId") ?: ""
+            val encodedName = backStackEntry.arguments?.getString("sellerName") ?: ""
+            val sellerName = java.net.URLDecoder.decode(encodedName, "UTF-8")
+            SellerShopScreen(
+                sellerId = sellerId,
+                sellerName = sellerName,
+                onBack = { navController.popBackStack() },
+                onProductClick = { id -> navController.navigate(Screen.ProductDetail.createRoute(id)) }
+            )
+        }
+
+        composable(Screen.FollowedShops.route) {
+            FollowedShopsScreen(
+                onBack = { navController.popBackStack() },
+                onShopClick = { sellerId, sellerName ->
+                    navController.navigate(Screen.SellerShop.createRoute(sellerId, sellerName))
+                }
+            )
         }
     }
 }
