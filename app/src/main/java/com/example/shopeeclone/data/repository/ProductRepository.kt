@@ -8,17 +8,14 @@ import io.github.jan.supabase.postgrest.postgrest
 class ProductRepository(
     private val client: io.github.jan.supabase.SupabaseClient = SupabaseClient.client
 ) {
-    // Sample data so the UI is browsable before Supabase is configured/populated.
     private val sampleProducts = listOf(
-        Product("1", "Wireless Earbuds", "Bluetooth 5.3, noise cancelling", 29.99, 19.99, "", "Electronics", "seller1", "TechStore", 120, 4.7, 850),
-        Product("2", "Running Shoes", "Lightweight breathable mesh", 45.00, null, "", "Fashion", "seller2", "SportZone", 60, 4.5, 320),
-        Product("3", "Phone Case", "Shockproof clear case", 8.99, 5.99, "", "Electronics", "seller1", "TechStore", 300, 4.2, 1200),
-        Product("4", "Backpack", "Water-resistant 20L", 25.50, null, "", "Fashion", "seller3", "UrbanGear", 80, 4.6, 410),
-        Product("5", "Desk Lamp", "LED adjustable brightness", 15.00, 12.00, "", "Home", "seller4", "HomeEssentials", 50, 4.4, 200)
+        Product(id = "1", name = "Wireless Earbuds", description = "Bluetooth 5.3, noise cancelling", price = 29.99, discountPrice = 19.99, category = "Electronics", sellerId = "seller1", sellerName = "TechStore", stock = 120, rating = 4.7, soldCount = 850),
+        Product(id = "2", name = "Running Shoes", description = "Lightweight breathable mesh", price = 45.00, discountPrice = null, category = "Fashion", sellerId = "seller2", sellerName = "SportZone", stock = 60, rating = 4.5, soldCount = 320),
+        Product(id = "3", name = "Phone Case", description = "Shockproof clear case", price = 8.99, discountPrice = 5.99, category = "Electronics", sellerId = "seller1", sellerName = "TechStore", stock = 300, rating = 4.2, soldCount = 1200),
+        Product(id = "4", name = "Backpack", description = "Water-resistant 20L", price = 25.50, discountPrice = null, category = "Fashion", sellerId = "seller3", sellerName = "UrbanGear", stock = 80, rating = 4.6, soldCount = 410),
+        Product(id = "5", name = "Desk Lamp", description = "LED adjustable brightness", price = 15.00, discountPrice = 12.00, category = "Home", sellerId = "seller4", sellerName = "HomeEssentials", stock = 50, rating = 4.4, soldCount = 200)
     )
 
-    // Exposes the last fetch failure (if any) so the UI can show a real message
-    // instead of silently falling back and leaving the user guessing.
     var lastError: String? = null
         private set
 
