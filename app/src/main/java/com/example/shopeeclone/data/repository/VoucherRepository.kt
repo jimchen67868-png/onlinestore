@@ -12,6 +12,7 @@ class VoucherRepository(
 ) {
     private val dateFormat = SimpleDateFormat("yyyy-MM-dd", Locale.US)
 
+    /** Validates a voucher code against the current cart subtotal. Returns the voucher if usable. */
     suspend fun validateVoucher(code: String, subtotal: Double): Result<Voucher> {
         return try {
             val voucher = client.postgrest["vouchers"].select {
@@ -50,7 +51,7 @@ class VoucherRepository(
         else
             voucher.discountValue
         val capped = voucher.maxDiscount?.let { minOf(raw, it) } ?: raw
-        return minOf(capped, subtotal)
+        return minOf(capped, subtotal) // never discount more than the order itself
     }
 
     suspend fun incrementUsage(voucher: Voucher): Result<Unit> = try {

@@ -15,6 +15,7 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import androidx.lifecycle.viewmodel.compose.viewModel
+import com.example.shopeeclone.data.repository.AuthRepository
 import com.example.shopeeclone.data.repository.FollowRepository
 import com.example.shopeeclone.data.repository.ProductRepository
 import com.example.shopeeclone.ui.screens.home.ProductCard
@@ -58,8 +59,11 @@ fun SellerShopScreen(
     sellerName: String,
     onBack: () -> Unit,
     onProductClick: (String) -> Unit,
-    viewModel: SellerShopViewModel = viewModel()
+    onChatWithSeller: (String, String, String, String) -> Unit, // buyerId, buyerName, sellerId, sellerName
+    viewModel: SellerShopViewModel = viewModel(),
+    authRepository: AuthRepository = AuthRepository()
 ) {
+    val coroutineScope = rememberCoroutineScope()
     LaunchedEffect(sellerId) { viewModel.load(sellerId) }
 
     Scaffold(
@@ -87,6 +91,19 @@ fun SellerShopScreen(
                     else ButtonDefaults.buttonColors()
                 ) {
                     Text(if (viewModel.isFollowing.value) "Following" else "Follow")
+                }
+                Spacer(Modifier.width(8.dp))
+                OutlinedButton(
+                    onClick = {
+                        coroutineScope.launch {
+                            val buyerId = authRepository.currentUserId ?: return@launch
+                            val profile = authRepository.getUserProfile()
+                            val buyerName = profile?.name?.ifBlank { null } ?: "Buyer"
+                            onChatWithSeller(buyerId, buyerName, sellerId, sellerName)
+                        }
+                    }
+                ) {
+                    Text("Chat")
                 }
             }
             Divider()

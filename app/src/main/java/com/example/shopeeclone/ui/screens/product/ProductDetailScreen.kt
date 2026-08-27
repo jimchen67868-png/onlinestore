@@ -16,6 +16,7 @@ import androidx.compose.ui.viewinterop.AndroidView
 import androidx.lifecycle.viewmodel.compose.viewModel
 import coil.compose.AsyncImage
 import com.example.shopeeclone.data.model.Product
+import com.example.shopeeclone.data.repository.AuthRepository
 import com.example.shopeeclone.data.repository.FollowRepository
 import com.example.shopeeclone.viewmodel.CartViewModel
 import com.example.shopeeclone.viewmodel.ProductViewModel
@@ -28,9 +29,11 @@ fun ProductDetailScreen(
     onBack: () -> Unit,
     onGoToCart: () -> Unit,
     onVisitShop: (String, String) -> Unit,
+    onChatWithSeller: (String, String, String, String) -> Unit, // buyerId, buyerName, sellerId, sellerName
     productViewModel: ProductViewModel = viewModel(),
     cartViewModel: CartViewModel = viewModel(),
-    followRepository: FollowRepository = FollowRepository()
+    followRepository: FollowRepository = FollowRepository(),
+    authRepository: AuthRepository = AuthRepository()
 ) {
     var product by remember { mutableStateOf<Product?>(null) }
     var quantity by remember { mutableStateOf(1) }
@@ -123,21 +126,36 @@ fun ProductDetailScreen(
                     )
                 }
                 Spacer(Modifier.height(4.dp))
-                OutlinedButton(
-                    onClick = {
-                        isTogglingFollow = true
-                        coroutineScope.launch {
-                            if (isFollowing) {
-                                followRepository.unfollow(p.sellerId).onSuccess { isFollowing = false }
-                            } else {
-                                followRepository.follow(p.sellerId, p.sellerName).onSuccess { isFollowing = true }
+                Row {
+                    OutlinedButton(
+                        onClick = {
+                            isTogglingFollow = true
+                            coroutineScope.launch {
+                                if (isFollowing) {
+                                    followRepository.unfollow(p.sellerId).onSuccess { isFollowing = false }
+                                } else {
+                                    followRepository.follow(p.sellerId, p.sellerName).onSuccess { isFollowing = true }
+                                }
+                                isTogglingFollow = false
                             }
-                            isTogglingFollow = false
+                        },
+                        enabled = !isTogglingFollow
+                    ) {
+                        Text(if (isFollowing) "Following" else "+ Follow Shop")
+                    }
+                    Spacer(Modifier.width(8.dp))
+                    OutlinedButton(
+                        onClick = {
+                            coroutineScope.launch {
+                                val buyerId = authRepository.currentUserId ?: return@launch
+                                val profile = authRepository.getUserProfile()
+                                val buyerName = profile?.name?.ifBlank { null } ?: "Buyer"
+                                onChatWithSeller(buyerId, buyerName, p.sellerId, p.sellerName)
+                            }
                         }
-                    },
-                    enabled = !isTogglingFollow
-                ) {
-                    Text(if (isFollowing) "Following" else "+ Follow Shop")
+                    ) {
+                        Text("Chat")
+                    }
                 }
                 Spacer(Modifier.height(16.dp))
                 Text("Description", fontWeight = FontWeight.Bold)

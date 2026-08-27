@@ -20,6 +20,8 @@ import com.example.shopeeclone.ui.screens.seller.SellerDashboardScreen
 import com.example.shopeeclone.ui.screens.seller.SellerVoucherScreen
 import com.example.shopeeclone.ui.screens.shop.SellerShopScreen
 import com.example.shopeeclone.ui.screens.shop.FollowedShopsScreen
+import com.example.shopeeclone.ui.screens.chat.ChatScreen
+import com.example.shopeeclone.ui.screens.chat.ChatListScreen
 
 @Composable
 fun ShopeeNavGraph(navController: NavHostController = rememberNavController()) {
@@ -66,6 +68,9 @@ fun ShopeeNavGraph(navController: NavHostController = rememberNavController()) {
                 onGoToCart = { navController.navigate(Screen.Cart.route) },
                 onVisitShop = { sellerId, sellerName ->
                     navController.navigate(Screen.SellerShop.createRoute(sellerId, sellerName))
+                },
+                onChatWithSeller = { buyerId, buyerName, sellerId, sellerName ->
+                    navController.navigate(Screen.Chat.createRoute(buyerId, buyerName, sellerId, sellerName))
                 }
             )
         }
@@ -103,6 +108,7 @@ fun ShopeeNavGraph(navController: NavHostController = rememberNavController()) {
                 onSellerDashboardClick = { navController.navigate(Screen.SellerDashboard.route) },
                 onEditProfileClick = { navController.navigate(Screen.EditProfile.route) },
                 onFollowedShopsClick = { navController.navigate(Screen.FollowedShops.route) },
+                onChatListClick = { navController.navigate(Screen.ChatList.route) },
                 onBack = { navController.popBackStack() }
             )
         }
@@ -136,7 +142,10 @@ fun ShopeeNavGraph(navController: NavHostController = rememberNavController()) {
                 sellerId = sellerId,
                 sellerName = sellerName,
                 onBack = { navController.popBackStack() },
-                onProductClick = { id -> navController.navigate(Screen.ProductDetail.createRoute(id)) }
+                onProductClick = { id -> navController.navigate(Screen.ProductDetail.createRoute(id)) },
+                onChatWithSeller = { buyerId, buyerName, sId, sName ->
+                    navController.navigate(Screen.Chat.createRoute(buyerId, buyerName, sId, sName))
+                }
             )
         }
 
@@ -145,6 +154,34 @@ fun ShopeeNavGraph(navController: NavHostController = rememberNavController()) {
                 onBack = { navController.popBackStack() },
                 onShopClick = { sellerId, sellerName ->
                     navController.navigate(Screen.SellerShop.createRoute(sellerId, sellerName))
+                }
+            )
+        }
+
+        composable(
+            route = Screen.Chat.route,
+            arguments = listOf(
+                navArgument("buyerId") { type = NavType.StringType },
+                navArgument("buyerName") { type = NavType.StringType },
+                navArgument("sellerId") { type = NavType.StringType },
+                navArgument("sellerName") { type = NavType.StringType }
+            )
+        ) { backStackEntry ->
+            fun dec(key: String) = java.net.URLDecoder.decode(backStackEntry.arguments?.getString(key) ?: "", "UTF-8")
+            ChatScreen(
+                buyerId = dec("buyerId"),
+                buyerName = dec("buyerName"),
+                sellerId = dec("sellerId"),
+                sellerName = dec("sellerName"),
+                onBack = { navController.popBackStack() }
+            )
+        }
+
+        composable(Screen.ChatList.route) {
+            ChatListScreen(
+                onBack = { navController.popBackStack() },
+                onOpenChat = { buyerId, buyerName, sellerId, sellerName ->
+                    navController.navigate(Screen.Chat.createRoute(buyerId, buyerName, sellerId, sellerName))
                 }
             )
         }
