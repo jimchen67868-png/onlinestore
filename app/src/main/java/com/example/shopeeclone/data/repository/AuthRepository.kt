@@ -38,4 +38,32 @@ class AuthRepository(
     suspend fun logout() {
         client.auth.signOut()
     }
+
+    suspend fun getUserProfile(): User? = try {
+        val uid = currentUserId ?: return null
+        client.postgrest["users"].select {
+            filter { eq("uid", uid) }
+        }.decodeSingleOrNull<User>()
+    } catch (e: Exception) {
+        null
+    }
+
+    suspend fun updateUserProfile(name: String, phone: String, address: String): Result<Unit> = try {
+        val uid = currentUserId ?: throw IllegalStateException("Not logged in")
+        client.postgrest["users"].update(
+            ProfileUpdate(name = name, phone = phone, address = address)
+        ) {
+            filter { eq("uid", uid) }
+        }
+        Result.success(Unit)
+    } catch (e: Exception) {
+        Result.failure(e)
+    }
 }
+
+@kotlinx.serialization.Serializable
+private data class ProfileUpdate(
+    val name: String,
+    val phone: String,
+    val address: String
+)

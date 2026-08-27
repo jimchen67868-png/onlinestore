@@ -15,6 +15,7 @@ fun ProfileScreen(
     onLogout: () -> Unit,
     onOrderHistoryClick: () -> Unit,
     onSellerDashboardClick: () -> Unit,
+    onEditProfileClick: () -> Unit,
     onBack: () -> Unit
 ) {
     Scaffold(
@@ -26,6 +27,11 @@ fun ProfileScreen(
         }
     ) { padding ->
         Column(modifier = Modifier.fillMaxSize().padding(padding).padding(16.dp)) {
+            ListItem(
+                headlineContent = { Text("Edit Profile") },
+                modifier = Modifier.clickableRow(onEditProfileClick)
+            )
+            Divider()
             ListItem(
                 headlineContent = { Text("My Orders") },
                 modifier = Modifier.clickableRow(onOrderHistoryClick)
