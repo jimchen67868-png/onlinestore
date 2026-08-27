@@ -3,6 +3,9 @@ package com.example.shopeeclone.ui.screens.product
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.pager.HorizontalPager
+import androidx.compose.foundation.pager.rememberPagerState
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material3.*
@@ -21,6 +24,8 @@ import com.example.shopeeclone.data.repository.FollowRepository
 import com.example.shopeeclone.viewmodel.CartViewModel
 import com.example.shopeeclone.viewmodel.ProductViewModel
 import kotlinx.coroutines.launch
+
+private data class MediaSlide(val type: String, val url: String) // type = "image" or "video"
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -64,130 +69,167 @@ fun ProductDetailScreen(
         }
     ) { padding ->
         product?.let { p ->
-            Column(modifier = Modifier.fillMaxSize().padding(padding).padding(16.dp)) {
-                if (p.imageUrl.isNotBlank()) {
-                    AsyncImage(
-                        model = p.imageUrl,
-                        contentDescription = p.name,
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .height(220.dp)
-                            .background(MaterialTheme.colorScheme.background)
-                    )
-                } else {
+            Column(modifier = Modifier.fillMaxSize().padding(padding)) {
+                val slides = remember(p.imageUrl, p.videoUrl) {
+                    buildList {
+                        if (p.imageUrl.isNotBlank()) add(MediaSlide("image", p.imageUrl))
+                        if (p.videoUrl.isNotBlank()) add(MediaSlide("video", p.videoUrl))
+                    }
+                }
+
+                if (slides.isEmpty()) {
                     Box(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .height(220.dp)
+                            .height(260.dp)
                             .background(MaterialTheme.colorScheme.background)
                     )
-                }
-
-                if (p.videoUrl.isNotBlank()) {
-                    Spacer(Modifier.height(8.dp))
-                    AndroidView(
-                        modifier = Modifier.fillMaxWidth().height(200.dp),
-                        factory = { ctx ->
-                            android.widget.VideoView(ctx).apply {
-                                setVideoURI(android.net.Uri.parse(p.videoUrl))
-                                setMediaController(android.widget.MediaController(ctx).also { it.setAnchorView(this) })
-                                setOnPreparedListener { it.isLooping = false }
-                                start()
+                } else {
+                    val pagerState = rememberPagerState(pageCount = { slides.size })
+                    Box(modifier = Modifier.fillMaxWidth().height(260.dp)) {
+                        HorizontalPager(state = pagerState, modifier = Modifier.fillMaxSize()) { page ->
+                            when (slides[page].type) {
+                                "image" -> AsyncImage(
+                                    model = slides[page].url,
+                                    contentDescription = p.name,
+                                    modifier = Modifier
+                                        .fillMaxSize()
+                                        .background(MaterialTheme.colorScheme.background)
+                                )
+                                "video" -> AndroidView(
+                                    modifier = Modifier.fillMaxSize(),
+                                    factory = { ctx ->
+                                        android.widget.VideoView(ctx).apply {
+                                            setVideoURI(android.net.Uri.parse(slides[page].url))
+                                            setMediaController(android.widget.MediaController(ctx).also { it.setAnchorView(this) })
+                                            setOnPreparedListener { it.isLooping = false }
+                                            start()
+                                        }
+                                    }
+                                )
                             }
                         }
-                    )
+                        if (slides.size > 1) {
+                            Row(
+                                modifier = Modifier
+                                    .align(Alignment.BottomCenter)
+                                    .padding(bottom = 8.dp),
+                                horizontalArrangement = Arrangement.spacedBy(6.dp)
+                            ) {
+                                slides.indices.forEach { index ->
+                                    Box(
+                                        modifier = Modifier
+                                            .size(7.dp)
+                                            .background(
+                                                if (pagerState.currentPage == index)
+                                                    MaterialTheme.colorScheme.primary
+                                                else
+                                                    MaterialTheme.colorScheme.onBackground.copy(alpha = 0.3f),
+                                                CircleShape
+                                            )
+                                    )
+                                }
+                            }
+                        }
+                    }
                 }
-                Spacer(Modifier.height(16.dp))
-                Text(p.name, style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
-                Spacer(Modifier.height(6.dp))
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Text(
-                        "$${p.discountPrice ?: p.price}",
-                        style = MaterialTheme.typography.headlineSmall,
-                        color = MaterialTheme.colorScheme.primary,
-                        fontWeight = FontWeight.Bold
-                    )
-                    if (p.discountPrice != null) {
-                        Spacer(Modifier.width(8.dp))
+
+                Column(modifier = Modifier.fillMaxSize().padding(16.dp)) {
+                    Text(p.name, style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
+                    Spacer(Modifier.height(6.dp))
+                    Row(verticalAlignment = Alignment.CenterVertically) {
                         Text(
-                            "$${p.price}",
-                            style = MaterialTheme.typography.bodyMedium.copy(textDecoration = androidx.compose.ui.text.style.TextDecoration.LineThrough),
-                            color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f)
+                            "$${p.discountPrice ?: p.price}",
+                            style = MaterialTheme.typography.headlineSmall,
+                            color = MaterialTheme.colorScheme.primary,
+                            fontWeight = FontWeight.Bold
+                        )
+                        if (p.discountPrice != null) {
+                            Spacer(Modifier.width(8.dp))
+                            Text(
+                                "$${p.price}",
+                                style = MaterialTheme.typography.bodyMedium.copy(textDecoration = TextDecoration.LineThrough),
+                                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f)
+                            )
+                        }
+                    }
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        modifier = Modifier.clickable { onVisitShop(p.sellerId, p.sellerName) }
+                    ) {
+                        Text(
+                            "${p.soldCount} sold · ★${p.rating} · Sold by ${p.sellerName}",
+                            style = MaterialTheme.typography.bodySmall.copy(textDecoration = TextDecoration.Underline)
                         )
                     }
-                }
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    modifier = Modifier.clickable { onVisitShop(p.sellerId, p.sellerName) }
-                ) {
-                    Text(
-                        "${p.soldCount} sold · ★${p.rating} · Sold by ${p.sellerName}",
-                        style = MaterialTheme.typography.bodySmall.copy(textDecoration = TextDecoration.Underline)
-                    )
-                }
-                Spacer(Modifier.height(4.dp))
-                Row {
-                    OutlinedButton(
-                        onClick = {
-                            isTogglingFollow = true
-                            coroutineScope.launch {
-                                if (isFollowing) {
-                                    followRepository.unfollow(p.sellerId).onSuccess { isFollowing = false }
-                                } else {
-                                    followRepository.follow(p.sellerId, p.sellerName).onSuccess { isFollowing = true }
+                    Spacer(Modifier.height(4.dp))
+                    Row {
+                        OutlinedButton(
+                            onClick = {
+                                isTogglingFollow = true
+                                coroutineScope.launch {
+                                    if (isFollowing) {
+                                        followRepository.unfollow(p.sellerId).onSuccess { isFollowing = false }
+                                    } else {
+                                        followRepository.follow(p.sellerId, p.sellerName).onSuccess { isFollowing = true }
+                                    }
+                                    isTogglingFollow = false
                                 }
-                                isTogglingFollow = false
-                            }
-                        },
-                        enabled = !isTogglingFollow
-                    ) {
-                        Text(if (isFollowing) "Following" else "+ Follow Shop")
-                    }
-                    Spacer(Modifier.width(8.dp))
-                    OutlinedButton(
-                        onClick = {
-                            coroutineScope.launch {
-                                val buyerId = authRepository.currentUserId ?: return@launch
-                                val profile = authRepository.getUserProfile()
-                                val buyerName = profile?.name?.ifBlank { null } ?: "Buyer"
-                                onChatWithSeller(buyerId, buyerName, p.sellerId, p.sellerName)
-                            }
+                            },
+                            enabled = !isTogglingFollow
+                        ) {
+                            Text(if (isFollowing) "Following" else "+ Follow Shop")
                         }
-                    ) {
-                        Text("Chat")
-                    }
-                }
-                Spacer(Modifier.height(16.dp))
-                Text("Description", fontWeight = FontWeight.Bold)
-                Text(p.description, style = MaterialTheme.typography.bodyMedium)
-
-                Spacer(Modifier.height(16.dp))
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Text("Quantity: ")
-                    IconButton(onClick = { if (quantity > 1) quantity-- }) { Text("-") }
-                    Text("$quantity")
-                    IconButton(onClick = { if (quantity < p.stock) quantity++ }) { Text("+") }
-                }
-
-                Spacer(Modifier.weight(1f))
-                Row(modifier = Modifier.fillMaxWidth()) {
-                    OutlinedButton(
-                        onClick = {
-                            cartViewModel.addToCart(p, quantity)
-                            coroutineScope.launch {
-                                snackbarHostState.showSnackbar("Added to cart")
+                        Spacer(Modifier.width(8.dp))
+                        OutlinedButton(
+                            onClick = {
+                                coroutineScope.launch {
+                                    val buyerId = authRepository.currentUserId ?: return@launch
+                                    val profile = authRepository.getUserProfile()
+                                    val buyerName = profile?.name?.ifBlank { null } ?: "Buyer"
+                                    onChatWithSeller(buyerId, buyerName, p.sellerId, p.sellerName)
+                                }
                             }
-                        },
-                        modifier = Modifier.weight(1f)
-                    ) { Text("Add to Cart") }
-                    Spacer(Modifier.width(8.dp))
-                    Button(
-                        onClick = {
-                            cartViewModel.addToCart(p, quantity)
-                            onGoToCart()
-                        },
-                        modifier = Modifier.weight(1f)
-                    ) { Text("Buy Now") }
+                        ) {
+                            Text("Chat")
+                        }
+                    }
+                    Spacer(Modifier.height(16.dp))
+                    Text("Description", fontWeight = FontWeight.Bold)
+                    Text(p.description, style = MaterialTheme.typography.bodyMedium)
+
+                    Spacer(Modifier.height(16.dp))
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Text("Quantity: ")
+                        IconButton(onClick = { if (quantity > 1) quantity-- }) { Text("-") }
+                        Text("$quantity")
+                        IconButton(onClick = {
+                            // Treat stock of 0 as "not tracked" rather than "sold out",
+                            // so sellers who leave stock blank don't accidentally block purchases.
+                            if (p.stock <= 0 || quantity < p.stock) quantity++
+                        }) { Text("+") }
+                    }
+
+                    Spacer(Modifier.weight(1f))
+                    Row(modifier = Modifier.fillMaxWidth()) {
+                        OutlinedButton(
+                            onClick = {
+                                cartViewModel.addToCart(p, quantity)
+                                coroutineScope.launch {
+                                    snackbarHostState.showSnackbar("Added to cart")
+                                }
+                            },
+                            modifier = Modifier.weight(1f)
+                        ) { Text("Add to Cart") }
+                        Spacer(Modifier.width(8.dp))
+                        Button(
+                            onClick = {
+                                cartViewModel.addToCart(p, quantity)
+                                onGoToCart()
+                            },
+                            modifier = Modifier.weight(1f)
+                        ) { Text("Buy Now") }
+                    }
                 }
             }
         } ?: Box(Modifier.fillMaxSize().padding(padding), contentAlignment = Alignment.Center) {
