@@ -16,6 +16,10 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
+import androidx.compose.ui.window.Dialog
+import androidx.compose.ui.window.DialogProperties
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.layout.ContentScale
 import androidx.lifecycle.viewmodel.compose.viewModel
 import coil.compose.AsyncImage
 import com.example.shopeeclone.data.model.Product
@@ -45,6 +49,7 @@ fun ProductDetailScreen(
     var isFetching by remember { mutableStateOf(true) }
     var isFollowing by remember { mutableStateOf(false) }
     var isTogglingFollow by remember { mutableStateOf(false) }
+    var fullscreenImageUrl by remember { mutableStateOf<String?>(null) }
     val snackbarHostState = remember { SnackbarHostState() }
     val coroutineScope = rememberCoroutineScope()
 
@@ -81,12 +86,12 @@ fun ProductDetailScreen(
                     Box(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .height(260.dp)
+                            .aspectRatio(1f)
                             .background(MaterialTheme.colorScheme.background)
                     )
                 } else {
                     val pagerState = rememberPagerState(pageCount = { slides.size })
-                    Box(modifier = Modifier.fillMaxWidth().height(260.dp)) {
+                    Box(modifier = Modifier.fillMaxWidth().aspectRatio(1f)) {
                         HorizontalPager(state = pagerState, modifier = Modifier.fillMaxSize()) { page ->
                             when (slides[page].type) {
                                 "image" -> AsyncImage(
@@ -95,6 +100,7 @@ fun ProductDetailScreen(
                                     modifier = Modifier
                                         .fillMaxSize()
                                         .background(MaterialTheme.colorScheme.background)
+                                        .clickable { fullscreenImageUrl = slides[page].url }
                                 )
                                 "video" -> AndroidView(
                                     modifier = Modifier.fillMaxSize(),
@@ -245,6 +251,28 @@ fun ProductDetailScreen(
                     Spacer(Modifier.height(16.dp))
                     Button(onClick = onBack) { Text("Go Back") }
                 }
+            }
+        }
+    }
+
+    fullscreenImageUrl?.let { url ->
+        Dialog(
+            onDismissRequest = { fullscreenImageUrl = null },
+            properties = DialogProperties(usePlatformDefaultWidth = false)
+        ) {
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .background(Color.Black)
+                    .clickable { fullscreenImageUrl = null },
+                contentAlignment = Alignment.Center
+            ) {
+                AsyncImage(
+                    model = url,
+                    contentDescription = null,
+                    contentScale = ContentScale.Fit,
+                    modifier = Modifier.fillMaxSize()
+                )
             }
         }
     }

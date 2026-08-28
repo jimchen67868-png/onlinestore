@@ -1,5 +1,6 @@
 package com.example.shopeeclone.viewmodel
 
+import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
@@ -18,7 +19,10 @@ class CartViewModel(
     private val voucherRepository: VoucherRepository = VoucherRepository()
 ) : ViewModel() {
 
-    val items = mutableStateOf<List<CartItem>>(CartRepository.items)
+    // SnapshotStateList (rather than mutableStateOf<List<...>>) guarantees Compose
+    // observes every add/remove/update, avoiding cases where reassigning a whole
+    // list doesn't reliably trigger recomposition.
+    val items = mutableStateListOf<CartItem>().apply { addAll(CartRepository.items) }
     val isPlacingOrder = mutableStateOf(false)
     val orderPlacedSuccessfully = mutableStateOf(false)
 
@@ -27,7 +31,8 @@ class CartViewModel(
     val isValidatingVoucher = mutableStateOf(false)
 
     fun refresh() {
-        items.value = CartRepository.items.toList()
+        items.clear()
+        items.addAll(CartRepository.items)
     }
 
     fun addToCart(product: Product, quantity: Int = 1) {

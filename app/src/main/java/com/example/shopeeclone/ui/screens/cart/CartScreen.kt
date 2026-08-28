@@ -35,7 +35,7 @@ fun CartScreen(
             )
         },
         bottomBar = {
-            if (viewModel.items.value.isNotEmpty()) {
+            if (viewModel.items.isNotEmpty()) {
                 Surface(shadowElevation = 8.dp) {
                     Row(
                         modifier = Modifier.fillMaxWidth().padding(16.dp),
@@ -49,13 +49,13 @@ fun CartScreen(
             }
         }
     ) { padding ->
-        if (viewModel.items.value.isEmpty()) {
+        if (viewModel.items.isEmpty()) {
             Box(Modifier.fillMaxSize().padding(padding), contentAlignment = Alignment.Center) {
                 Text("Your cart is empty")
             }
         } else {
             LazyColumn(modifier = Modifier.fillMaxSize().padding(padding)) {
-                items(viewModel.items.value, key = { it.product.id }) { item ->
+                items(viewModel.items, key = { it.product.id }) { item ->
                     CartItemRow(
                         item = item,
                         onIncrease = { viewModel.updateQuantity(item.product.id, item.quantity + 1) },
