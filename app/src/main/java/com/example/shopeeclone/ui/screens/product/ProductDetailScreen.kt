@@ -86,12 +86,12 @@ fun ProductDetailScreen(
                     Box(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .aspectRatio(1f)
+                            .height(220.dp)
                             .background(MaterialTheme.colorScheme.background)
                     )
                 } else {
                     val pagerState = rememberPagerState(pageCount = { slides.size })
-                    Box(modifier = Modifier.fillMaxWidth().aspectRatio(1f)) {
+                    Box(modifier = Modifier.fillMaxWidth().height(220.dp)) {
                         HorizontalPager(state = pagerState, modifier = Modifier.fillMaxSize()) { page ->
                             when (slides[page].type) {
                                 "image" -> AsyncImage(
