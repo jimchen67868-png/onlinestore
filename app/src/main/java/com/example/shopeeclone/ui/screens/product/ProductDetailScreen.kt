@@ -5,7 +5,9 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.rememberPagerState
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material3.*
@@ -71,10 +73,42 @@ fun ProductDetailScreen(
                     }
                 }
             )
+        },
+        bottomBar = {
+            product?.let { p ->
+                Surface(shadowElevation = 8.dp) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth().padding(12.dp)
+                    ) {
+                        OutlinedButton(
+                            onClick = {
+                                cartViewModel.addToCart(p, quantity)
+                                coroutineScope.launch {
+                                    snackbarHostState.showSnackbar("Added to cart")
+                                }
+                            },
+                            modifier = Modifier.weight(1f)
+                        ) { Text("Add to Cart") }
+                        Spacer(Modifier.width(8.dp))
+                        Button(
+                            onClick = {
+                                cartViewModel.addToCart(p, quantity)
+                                onGoToCart()
+                            },
+                            modifier = Modifier.weight(1f)
+                        ) { Text("Buy Now") }
+                    }
+                }
+            }
         }
     ) { padding ->
         product?.let { p ->
-            Column(modifier = Modifier.fillMaxSize().padding(padding)) {
+            Column(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(padding)
+                    .verticalScroll(rememberScrollState())
+            ) {
                 val slides = remember(p.imageUrl, p.videoUrl) {
                     buildList {
                         if (p.imageUrl.isNotBlank()) add(MediaSlide("image", p.imageUrl))
@@ -140,7 +174,7 @@ fun ProductDetailScreen(
                     }
                 }
 
-                Column(modifier = Modifier.fillMaxSize().padding(16.dp)) {
+                Column(modifier = Modifier.fillMaxWidth().padding(16.dp)) {
                     Text(p.name, style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
                     Spacer(Modifier.height(6.dp))
                     Row(verticalAlignment = Alignment.CenterVertically) {
@@ -201,10 +235,6 @@ fun ProductDetailScreen(
                         }
                     }
                     Spacer(Modifier.height(16.dp))
-                    Text("Description", fontWeight = FontWeight.Bold)
-                    Text(p.description, style = MaterialTheme.typography.bodyMedium)
-
-                    Spacer(Modifier.height(16.dp))
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         Text("Quantity: ")
                         IconButton(onClick = { if (quantity > 1) quantity-- }) { Text("-") }
@@ -215,27 +245,12 @@ fun ProductDetailScreen(
                             if (p.stock <= 0 || quantity < p.stock) quantity++
                         }) { Text("+") }
                     }
-
-                    Spacer(Modifier.weight(1f))
-                    Row(modifier = Modifier.fillMaxWidth()) {
-                        OutlinedButton(
-                            onClick = {
-                                cartViewModel.addToCart(p, quantity)
-                                coroutineScope.launch {
-                                    snackbarHostState.showSnackbar("Added to cart")
-                                }
-                            },
-                            modifier = Modifier.weight(1f)
-                        ) { Text("Add to Cart") }
-                        Spacer(Modifier.width(8.dp))
-                        Button(
-                            onClick = {
-                                cartViewModel.addToCart(p, quantity)
-                                onGoToCart()
-                            },
-                            modifier = Modifier.weight(1f)
-                        ) { Text("Buy Now") }
-                    }
+                    Spacer(Modifier.height(16.dp))
+                    Text("Description", fontWeight = FontWeight.Bold)
+                    Text(p.description, style = MaterialTheme.typography.bodyMedium)
+                    // Extra bottom space so the last line of a long description
+                    // isn't flush against the sticky Add to Cart / Buy Now bar.
+                    Spacer(Modifier.height(24.dp))
                 }
             }
         } ?: Box(Modifier.fillMaxSize().padding(padding), contentAlignment = Alignment.Center) {
