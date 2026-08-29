@@ -21,7 +21,11 @@ class ChatRepository(
         productId: String = "",
         productName: String = "",
         productPrice: Double? = null,
-        productImageUrl: String = ""
+        productImageUrl: String = "",
+        orderId: String = "",
+        orderTotal: Double? = null,
+        orderStatus: String = "",
+        orderSummary: String = ""
     ): Result<Unit> = try {
         val senderId = authRepository.currentUserId ?: throw IllegalStateException("Not logged in")
         val message = Message(
@@ -37,7 +41,11 @@ class ChatRepository(
             productId = productId,
             productName = productName,
             productPrice = productPrice,
-            productImageUrl = productImageUrl
+            productImageUrl = productImageUrl,
+            orderId = orderId,
+            orderTotal = orderTotal,
+            orderStatus = orderStatus,
+            orderSummary = orderSummary
         )
         client.postgrest["messages"].insert(message)
         Result.success(Unit)

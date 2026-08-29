@@ -194,7 +194,8 @@ fun ShopeeNavGraph(navController: NavHostController = rememberNavController()) {
                 productPrice = dec("productPrice"),
                 productImageUrl = dec("productImageUrl"),
                 onBack = { navController.popBackStack() },
-                onProductClick = { id -> navController.navigate(Screen.ProductDetail.createRoute(id)) }
+                onProductClick = { id -> navController.navigate(Screen.ProductDetail.createRoute(id)) },
+                onOrderClick = { navController.navigate(Screen.OrderHistory.route) }
             )
         }
 

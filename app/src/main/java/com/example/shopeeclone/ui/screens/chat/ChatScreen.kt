@@ -16,6 +16,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.Send
+import androidx.compose.material.icons.filled.ShoppingCart
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -33,9 +34,11 @@ import androidx.lifecycle.viewModelScope
 import androidx.lifecycle.viewmodel.compose.viewModel
 import coil.compose.AsyncImage
 import com.example.shopeeclone.data.model.Message
+import com.example.shopeeclone.data.model.Order
 import com.example.shopeeclone.data.repository.AuthRepository
 import com.example.shopeeclone.data.repository.ChatRepository
 import com.example.shopeeclone.data.repository.MediaRepository
+import com.example.shopeeclone.data.repository.OrderRepository
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.isActive
@@ -44,10 +47,13 @@ import kotlinx.coroutines.launch
 class ChatViewModel(
     private val chatRepository: ChatRepository = ChatRepository(),
     private val authRepository: AuthRepository = AuthRepository(),
-    private val mediaRepository: MediaRepository = MediaRepository()
+    private val mediaRepository: MediaRepository = MediaRepository(),
+    private val orderRepository: OrderRepository = OrderRepository()
 ) : ViewModel() {
     val messages = mutableStateOf<List<Message>>(emptyList())
     val isSending = mutableStateOf(false)
+    val myOrders = mutableStateOf<List<Order>>(emptyList())
+    val isLoadingOrders = mutableStateOf(false)
     val currentUserId: String? get() = authRepository.currentUserId
 
     private var pollingJob: Job? = null
@@ -126,6 +132,32 @@ class ChatViewModel(
             messages.value = chatRepository.getMessages(buyerId, sellerId)
         }
     }
+
+    fun loadMyOrders() {
+        viewModelScope.launch {
+            isLoadingOrders.value = true
+            val userId = authRepository.currentUserId ?: ""
+            myOrders.value = orderRepository.getOrdersForUser(userId)
+            isLoadingOrders.value = false
+        }
+    }
+
+    fun sendOrderCard(buyerId: String, buyerName: String, sellerId: String, sellerName: String, order: Order) {
+        viewModelScope.launch {
+            val firstItemName = order.items.firstOrNull()?.product?.name ?: "Order"
+            val extra = if (order.items.size > 1) " + ${order.items.size - 1} more item(s)" else ""
+            chatRepository.sendMessage(
+                buyerId, buyerName, sellerId, sellerName,
+                content = "",
+                mediaType = "order",
+                orderId = order.id,
+                orderTotal = order.totalAmount,
+                orderStatus = order.status.name,
+                orderSummary = firstItemName + extra
+            )
+            messages.value = chatRepository.getMessages(buyerId, sellerId)
+        }
+    }
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -137,6 +169,7 @@ fun ChatScreen(
     sellerName: String,
     onBack: () -> Unit,
     onProductClick: (String) -> Unit,
+    onOrderClick: () -> Unit,
     productId: String = "",
     productName: String = "",
     productPrice: String = "",
@@ -145,6 +178,7 @@ fun ChatScreen(
 ) {
     var input by remember { mutableStateOf("") }
     var fullscreenImageUrl by remember { mutableStateOf<String?>(null) }
+    var showOrderPicker by remember { mutableStateOf(false) }
     val listState = rememberLazyListState()
     val currentUserId = viewModel.currentUserId
     val title = if (currentUserId == sellerId) buyerName else sellerName
@@ -202,6 +236,14 @@ fun ChatScreen(
                     ) {
                         Icon(Icons.Default.Add, contentDescription = "Attach photo or video")
                     }
+                    IconButton(
+                        onClick = {
+                            viewModel.loadMyOrders()
+                            showOrderPicker = true
+                        }
+                    ) {
+                        Icon(Icons.Default.ShoppingCart, contentDescription = "Attach order")
+                    }
                     OutlinedTextField(
                         value = input,
                         onValueChange = { input = it },
@@ -235,6 +277,22 @@ fun ChatScreen(
                     horizontalArrangement = if (isMine) Arrangement.End else Arrangement.Start
                 ) {
                     when {
+                        message.mediaType == "order" -> {
+                            Column(
+                                modifier = Modifier
+                                    .widthIn(max = 260.dp)
+                                    .background(MaterialTheme.colorScheme.surface, RoundedCornerShape(12.dp))
+                                    .clickable { onOrderClick() }
+                                    .padding(12.dp)
+                            ) {
+                                Text("Order #${message.orderId.take(8)}", fontWeight = FontWeight.Bold)
+                                Text(message.orderSummary, style = MaterialTheme.typography.bodySmall)
+                                Text("Status: ${message.orderStatus}", style = MaterialTheme.typography.bodySmall)
+                                message.orderTotal?.let {
+                                    Text("Total: $${"%.2f".format(it)}", color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.Bold)
+                                }
+                            }
+                        }
                         message.mediaType == "product" -> {
                             Row(
                                 modifier = Modifier
@@ -315,6 +373,46 @@ fun ChatScreen(
                 }
             }
         }
+    }
+
+    if (showOrderPicker) {
+        AlertDialog(
+            onDismissRequest = { showOrderPicker = false },
+            title = { Text("Select an order to share") },
+            text = {
+                if (viewModel.isLoadingOrders.value) {
+                    Box(Modifier.fillMaxWidth().padding(24.dp), contentAlignment = Alignment.Center) {
+                        CircularProgressIndicator()
+                    }
+                } else if (viewModel.myOrders.value.isEmpty()) {
+                    Text("You don't have any orders yet.")
+                } else {
+                    LazyColumn(modifier = Modifier.heightIn(max = 350.dp)) {
+                        items(viewModel.myOrders.value, key = { it.id }) { order ->
+                            Column(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .clickable {
+                                        viewModel.sendOrderCard(buyerId, buyerName, sellerId, sellerName, order)
+                                        showOrderPicker = false
+                                    }
+                                    .padding(vertical = 8.dp)
+                            ) {
+                                Text("Order #${order.id.take(8)}", fontWeight = FontWeight.Medium)
+                                Text(
+                                    "${order.items.size} item(s) · $${"%.2f".format(order.totalAmount)} · ${order.status.name}",
+                                    style = MaterialTheme.typography.bodySmall
+                                )
+                            }
+                            Divider()
+                        }
+                    }
+                }
+            },
+            confirmButton = {
+                TextButton(onClick = { showOrderPicker = false }) { Text("Cancel") }
+            }
+        )
     }
 
     fullscreenImageUrl?.let { url ->
