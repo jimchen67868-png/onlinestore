@@ -63,6 +63,7 @@ class SellerViewModel(
         description: String,
         price: Double,
         stock: Int,
+        category: String,
         newImageUri: Uri?,
         newVideoUri: Uri?,
         onDone: () -> Unit
@@ -92,6 +93,7 @@ class SellerViewModel(
                         description = description,
                         price = price,
                         stock = stock,
+                        category = category,
                         sellerId = sellerId,
                         sellerName = "My Store",
                         imageUrl = imageUrl,
@@ -106,6 +108,7 @@ class SellerViewModel(
                         description = description,
                         price = price,
                         stock = stock,
+                        category = category,
                         imageUrl = imageUrl,
                         videoUrl = videoUrl
                     )
@@ -147,6 +150,7 @@ fun SellerDashboardScreen(
     var price by remember { mutableStateOf("") }
     var description by remember { mutableStateOf("") }
     var stock by remember { mutableStateOf("") }
+    var category by remember { mutableStateOf(com.example.shopeeclone.data.model.ProductCategories.all.first()) }
     var editingProduct by remember { mutableStateOf<Product?>(null) }
     var productPendingDelete by remember { mutableStateOf<Product?>(null) }
     var pickedImageUri by remember { mutableStateOf<Uri?>(null) }
@@ -161,6 +165,7 @@ fun SellerDashboardScreen(
 
     fun clearForm() {
         name = ""; price = ""; description = ""; stock = ""
+        category = com.example.shopeeclone.data.model.ProductCategories.all.first()
         editingProduct = null
         pickedImageUri = null
         pickedVideoUri = null
@@ -172,6 +177,7 @@ fun SellerDashboardScreen(
         price = product.price.toString()
         description = product.description
         stock = product.stock.toString()
+        category = product.category.ifBlank { com.example.shopeeclone.data.model.ProductCategories.all.first() }
         pickedImageUri = null
         pickedVideoUri = null
     }
@@ -249,6 +255,18 @@ fun SellerDashboardScreen(
                 Spacer(Modifier.height(8.dp))
                 OutlinedTextField(value = stock, onValueChange = { stock = it }, label = { Text("Stock quantity") }, modifier = Modifier.fillMaxWidth())
                 Spacer(Modifier.height(8.dp))
+                Text("Category", style = MaterialTheme.typography.bodySmall)
+                Spacer(Modifier.height(4.dp))
+                androidx.compose.foundation.lazy.LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    items(com.example.shopeeclone.data.model.ProductCategories.all) { cat ->
+                        FilterChip(
+                            selected = category == cat,
+                            onClick = { category = cat },
+                            label = { Text(cat) }
+                        )
+                    }
+                }
+                Spacer(Modifier.height(8.dp))
                 OutlinedTextField(value = description, onValueChange = { description = it }, label = { Text("Description") }, modifier = Modifier.fillMaxWidth())
 
                 viewModel.statusMessage.value?.let {
@@ -273,6 +291,7 @@ fun SellerDashboardScreen(
                                 description = description,
                                 price = price.toDoubleOrNull() ?: 0.0,
                                 stock = stock.toIntOrNull() ?: 0,
+                                category = category,
                                 newImageUri = pickedImageUri,
                                 newVideoUri = pickedVideoUri,
                                 onDone = { clearForm() }

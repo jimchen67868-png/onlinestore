@@ -19,3 +19,7 @@ data class Product(
     val rating: Double = 0.0,
     @SerialName("sold_count") val soldCount: Int = 0
 )
+
+object ProductCategories {
+    val all = listOf("Electronics", "Fashion", "Home", "Beauty", "Sports", "Toys", "Books", "Groceries", "Other")
+}

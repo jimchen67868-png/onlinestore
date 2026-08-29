@@ -11,9 +11,12 @@ class ProductViewModel(
     private val repository: ProductRepository = ProductRepository()
 ) : ViewModel() {
 
+    private var allProducts: List<Product> = emptyList()
+
     val products = mutableStateOf<List<Product>>(emptyList())
     val isLoading = mutableStateOf(false)
     val searchQuery = mutableStateOf("")
+    val selectedCategory = mutableStateOf("All")
     val errorMessage = mutableStateOf<String?>(null)
 
     init {
@@ -23,18 +26,30 @@ class ProductViewModel(
     fun loadProducts() {
         viewModelScope.launch {
             isLoading.value = true
-            products.value = repository.getProducts()
+            allProducts = repository.getProducts()
             errorMessage.value = repository.lastError
+            applyFilters()
             isLoading.value = false
         }
     }
 
     fun search(query: String) {
         searchQuery.value = query
-        viewModelScope.launch {
-            products.value = if (query.isBlank()) repository.getProducts()
-            else repository.searchProducts(query)
-            errorMessage.value = repository.lastError
+        applyFilters()
+    }
+
+    fun selectCategory(category: String) {
+        selectedCategory.value = category
+        applyFilters()
+    }
+
+    private fun applyFilters() {
+        products.value = allProducts.filter { p ->
+            val matchesCategory = selectedCategory.value == "All" ||
+                p.category.equals(selectedCategory.value, ignoreCase = true)
+            val matchesSearch = searchQuery.value.isBlank() ||
+                p.name.contains(searchQuery.value, ignoreCase = true)
+            matchesCategory && matchesSearch
         }
     }
 

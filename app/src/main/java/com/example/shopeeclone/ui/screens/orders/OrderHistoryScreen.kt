@@ -52,6 +52,9 @@ fun OrderHistoryScreen(
                         Text("Order #${order.id.take(8)}", fontWeight = FontWeight.Bold)
                         Text("Status: ${order.status}")
                         Text("Items: ${order.items.size} · Total: $${"%.2f".format(order.totalAmount)}")
+                        if (order.shippingMethod.isNotBlank()) {
+                            Text("Shipping: ${order.shippingMethod}", style = MaterialTheme.typography.bodySmall)
+                        }
                     }
                     Divider()
                 }

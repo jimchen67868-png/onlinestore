@@ -6,6 +6,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.shopeeclone.data.model.CartItem
 import com.example.shopeeclone.data.model.Product
+import com.example.shopeeclone.data.model.ShippingOptions
 import com.example.shopeeclone.data.model.Voucher
 import com.example.shopeeclone.data.repository.AuthRepository
 import com.example.shopeeclone.data.repository.CartRepository
@@ -29,6 +30,8 @@ class CartViewModel(
     val appliedVoucher = mutableStateOf<Voucher?>(null)
     val voucherErrorMessage = mutableStateOf<String?>(null)
     val isValidatingVoucher = mutableStateOf(false)
+
+    val selectedShipping = mutableStateOf(ShippingOptions.all.first())
 
     fun refresh() {
         items.clear()
@@ -58,7 +61,9 @@ class CartViewModel(
     fun discountAmount(): Double =
         appliedVoucher.value?.let { voucherRepository.calculateDiscount(it, total()) } ?: 0.0
 
-    fun finalTotal(): Double = (total() - discountAmount()).coerceAtLeast(0.0)
+    fun shippingCost(): Double = selectedShipping.value.cost
+
+    fun finalTotal(): Double = (total() - discountAmount() + shippingCost()).coerceAtLeast(0.0)
 
     fun applyVoucher(code: String) {
         if (code.isBlank()) return
@@ -87,12 +92,15 @@ class CartViewModel(
             val userId = authRepository.currentUserId ?: "guest"
             val voucher = appliedVoucher.value
             val discount = discountAmount()
+            val shipping = selectedShipping.value
             val result = orderRepository.placeOrder(
                 userId = userId,
                 items = CartRepository.items,
                 address = address,
                 discountAmount = discount,
-                voucherCode = voucher?.code ?: ""
+                voucherCode = voucher?.code ?: "",
+                shippingMethod = shipping.name,
+                shippingCost = shipping.cost
             )
             if (result.isSuccess && voucher != null) {
                 voucherRepository.incrementUsage(voucher)

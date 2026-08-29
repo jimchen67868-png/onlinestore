@@ -3,9 +3,11 @@ package com.example.shopeeclone.ui.screens.home
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Person
@@ -22,6 +24,7 @@ import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.viewmodel.compose.viewModel
 import coil.compose.AsyncImage
 import com.example.shopeeclone.data.model.Product
+import com.example.shopeeclone.data.model.ProductCategories
 import com.example.shopeeclone.viewmodel.ProductViewModel
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -70,20 +73,42 @@ fun HomeScreen(
             )
         }
     ) { padding ->
-        if (viewModel.isLoading.value) {
-            Box(Modifier.fillMaxSize().padding(padding), contentAlignment = androidx.compose.ui.Alignment.Center) {
-                CircularProgressIndicator()
-            }
-        } else {
-            LazyVerticalGrid(
-                columns = GridCells.Fixed(2),
-                contentPadding = PaddingValues(12.dp),
-                horizontalArrangement = Arrangement.spacedBy(12.dp),
-                verticalArrangement = Arrangement.spacedBy(12.dp),
-                modifier = Modifier.fillMaxSize().padding(padding)
+        Column(modifier = Modifier.fillMaxSize().padding(padding)) {
+            val categories = remember { listOf("All") + ProductCategories.all }
+            LazyRow(
+                contentPadding = PaddingValues(horizontal = 12.dp, vertical = 8.dp),
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
             ) {
-                items(viewModel.products.value) { product ->
-                    ProductCard(product = product, onClick = { onProductClick(product.id) })
+                items(categories) { category ->
+                    FilterChip(
+                        selected = viewModel.selectedCategory.value == category,
+                        onClick = { viewModel.selectCategory(category) },
+                        label = { Text(category) }
+                    )
+                }
+            }
+
+            Box(modifier = Modifier.fillMaxWidth().weight(1f)) {
+                if (viewModel.isLoading.value) {
+                    Box(Modifier.fillMaxSize(), contentAlignment = androidx.compose.ui.Alignment.Center) {
+                        CircularProgressIndicator()
+                    }
+                } else if (viewModel.products.value.isEmpty()) {
+                    Box(Modifier.fillMaxSize(), contentAlignment = androidx.compose.ui.Alignment.Center) {
+                        Text("No products in this category yet.")
+                    }
+                } else {
+                    LazyVerticalGrid(
+                        columns = GridCells.Fixed(2),
+                        contentPadding = PaddingValues(12.dp),
+                        horizontalArrangement = Arrangement.spacedBy(12.dp),
+                        verticalArrangement = Arrangement.spacedBy(12.dp),
+                        modifier = Modifier.fillMaxSize()
+                    ) {
+                        items(viewModel.products.value) { product ->
+                            ProductCard(product = product, onClick = { onProductClick(product.id) })
+                        }
+                    }
                 }
             }
         }

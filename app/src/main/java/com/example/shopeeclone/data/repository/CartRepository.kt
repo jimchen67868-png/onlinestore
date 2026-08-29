@@ -81,18 +81,22 @@ class OrderRepository(
         items: List<CartItem>,
         address: String,
         discountAmount: Double = 0.0,
-        voucherCode: String = ""
+        voucherCode: String = "",
+        shippingMethod: String = "Standard",
+        shippingCost: Double = 0.0
     ): Result<Order> = try {
         val subtotal = items.sumOf { it.subtotal }
         val order = Order(
             id = UUID.randomUUID().toString(),
             userId = userId,
             items = items,
-            totalAmount = (subtotal - discountAmount).coerceAtLeast(0.0),
+            totalAmount = (subtotal - discountAmount + shippingCost).coerceAtLeast(0.0),
             discountAmount = discountAmount,
             voucherCode = voucherCode,
             status = OrderStatus.PENDING,
-            shippingAddress = address
+            shippingAddress = address,
+            shippingMethod = shippingMethod,
+            shippingCost = shippingCost
         )
         client.postgrest["orders"].insert(order)
         CartRepository.clear()

@@ -1,14 +1,18 @@
 package com.example.shopeeclone.ui.screens.checkout
 
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
+import com.example.shopeeclone.data.model.ShippingOptions
 import com.example.shopeeclone.viewmodel.CartViewModel
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -32,9 +36,30 @@ fun CheckoutScreen(
                 title = { Text("Checkout") },
                 navigationIcon = { IconButton(onClick = onBack) { Icon(Icons.Default.ArrowBack, contentDescription = "Back") } }
             )
+        },
+        bottomBar = {
+            Surface(shadowElevation = 8.dp) {
+                Column(modifier = Modifier.fillMaxWidth().padding(16.dp)) {
+                    Text("Total: $${"%.2f".format(viewModel.finalTotal())}", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+                    Spacer(Modifier.height(8.dp))
+                    Button(
+                        onClick = { viewModel.placeOrder(address) },
+                        enabled = address.isNotBlank() && !viewModel.isPlacingOrder.value,
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Text(if (viewModel.isPlacingOrder.value) "Placing order..." else "Place Order")
+                    }
+                }
+            }
         }
     ) { padding ->
-        Column(modifier = Modifier.fillMaxSize().padding(padding).padding(16.dp)) {
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(padding)
+                .padding(16.dp)
+                .verticalScroll(rememberScrollState())
+        ) {
             Text("Shipping Address", fontWeight = FontWeight.Bold)
             Spacer(Modifier.height(8.dp))
             OutlinedTextField(
@@ -45,9 +70,27 @@ fun CheckoutScreen(
             )
 
             Spacer(Modifier.height(16.dp))
+            Text("Shipping Method", fontWeight = FontWeight.Bold)
+            ShippingOptions.all.forEach { option ->
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    RadioButton(
+                        selected = viewModel.selectedShipping.value == option,
+                        onClick = { viewModel.selectedShipping.value = option }
+                    )
+                    Column {
+                        Text("${option.name} — ${if (option.cost > 0) "$${"%.2f".format(option.cost)}" else "Free"}")
+                        Text("Estimated delivery: ${option.etaDays}", style = MaterialTheme.typography.bodySmall)
+                    }
+                }
+            }
+
+            Spacer(Modifier.height(16.dp))
             Text("Payment Method", fontWeight = FontWeight.Bold)
             listOf("Cash on Delivery", "Credit / Debit Card", "E-Wallet").forEach { method ->
-                Row(verticalAlignment = androidx.compose.ui.Alignment.CenterVertically) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
                     RadioButton(selected = paymentMethod == method, onClick = { paymentMethod = method })
                     Text(method)
                 }
@@ -58,13 +101,13 @@ fun CheckoutScreen(
             Spacer(Modifier.height(8.dp))
             val voucher = viewModel.appliedVoucher.value
             if (voucher != null) {
-                Row(verticalAlignment = androidx.compose.ui.Alignment.CenterVertically) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
                     Text("\"${voucher.code}\" applied — you saved $${"%.2f".format(viewModel.discountAmount())}", color = MaterialTheme.colorScheme.primary)
                     Spacer(Modifier.width(8.dp))
                     TextButton(onClick = { viewModel.removeVoucher(); voucherInput = "" }) { Text("Remove") }
                 }
             } else {
-                Row(verticalAlignment = androidx.compose.ui.Alignment.CenterVertically) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
                     OutlinedTextField(
                         value = voucherInput,
                         onValueChange = { voucherInput = it },
@@ -96,16 +139,10 @@ fun CheckoutScreen(
             if (viewModel.discountAmount() > 0) {
                 Text("Voucher discount: -$${"%.2f".format(viewModel.discountAmount())}", color = MaterialTheme.colorScheme.primary)
             }
-            Text("Total: $${"%.2f".format(viewModel.finalTotal())}", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
-
-            Spacer(Modifier.weight(1f))
-            Button(
-                onClick = { viewModel.placeOrder(address) },
-                enabled = address.isNotBlank() && !viewModel.isPlacingOrder.value,
-                modifier = Modifier.fillMaxWidth()
-            ) {
-                Text(if (viewModel.isPlacingOrder.value) "Placing order..." else "Place Order")
-            }
+            Text(
+                "Shipping (${viewModel.selectedShipping.value.name}): ${if (viewModel.shippingCost() > 0) "$${"%.2f".format(viewModel.shippingCost())}" else "Free"}"
+            )
+            Spacer(Modifier.height(24.dp))
         }
     }
 }
