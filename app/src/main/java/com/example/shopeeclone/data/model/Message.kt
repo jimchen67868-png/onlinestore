@@ -12,5 +12,7 @@ data class Message(
     @SerialName("seller_name") val sellerName: String = "",
     @SerialName("sender_id") val senderId: String = "",
     val content: String = "",
+    @SerialName("media_url") val mediaUrl: String = "",
+    @SerialName("media_type") val mediaType: String = "", // "image", "video", or "" for text-only
     @SerialName("created_at") val createdAt: String? = null
 )

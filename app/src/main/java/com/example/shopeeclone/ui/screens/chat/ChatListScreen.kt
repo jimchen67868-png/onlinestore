@@ -82,7 +82,13 @@ fun ChatListScreen(
                         Spacer(Modifier.width(12.dp))
                         Column(modifier = Modifier.weight(1f)) {
                             Text(displayName.ifBlank { "Unknown" }, fontWeight = FontWeight.Medium)
-                            Text(convo.content, style = MaterialTheme.typography.bodySmall, maxLines = 1)
+                            val preview = when {
+                                convo.content.isNotBlank() -> convo.content
+                                convo.mediaType == "video" -> "[Video]"
+                                convo.mediaType == "image" -> "[Photo]"
+                                else -> ""
+                            }
+                            Text(preview, style = MaterialTheme.typography.bodySmall, maxLines = 1)
                         }
                     }
                     Divider()
