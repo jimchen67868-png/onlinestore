@@ -38,7 +38,7 @@ fun ProductDetailScreen(
     onBack: () -> Unit,
     onGoToCart: () -> Unit,
     onVisitShop: (String, String) -> Unit,
-    onChatWithSeller: (String, String, String, String) -> Unit, // buyerId, buyerName, sellerId, sellerName
+    onChatWithSeller: (String, String, Product) -> Unit, // buyerId, buyerName, product
     productViewModel: ProductViewModel = viewModel(),
     cartViewModel: CartViewModel = viewModel(),
     followRepository: FollowRepository = FollowRepository(),
@@ -193,7 +193,7 @@ fun ProductDetailScreen(
                                     val buyerId = authRepository.currentUserId ?: return@launch
                                     val profile = authRepository.getUserProfile()
                                     val buyerName = profile?.name?.ifBlank { null } ?: "Buyer"
-                                    onChatWithSeller(buyerId, buyerName, p.sellerId, p.sellerName)
+                                    onChatWithSeller(buyerId, buyerName, p)
                                 }
                             }
                         ) {

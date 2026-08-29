@@ -22,6 +22,7 @@ import com.example.shopeeclone.ui.screens.shop.SellerShopScreen
 import com.example.shopeeclone.ui.screens.shop.FollowedShopsScreen
 import com.example.shopeeclone.ui.screens.chat.ChatScreen
 import com.example.shopeeclone.ui.screens.chat.ChatListScreen
+import com.example.shopeeclone.data.model.Product
 
 @Composable
 fun ShopeeNavGraph(navController: NavHostController = rememberNavController()) {
@@ -69,8 +70,19 @@ fun ShopeeNavGraph(navController: NavHostController = rememberNavController()) {
                 onVisitShop = { sellerId, sellerName ->
                     navController.navigate(Screen.SellerShop.createRoute(sellerId, sellerName))
                 },
-                onChatWithSeller = { buyerId, buyerName, sellerId, sellerName ->
-                    navController.navigate(Screen.Chat.createRoute(buyerId, buyerName, sellerId, sellerName))
+                onChatWithSeller = { buyerId, buyerName, product ->
+                    navController.navigate(
+                        Screen.Chat.createRoute(
+                            buyerId = buyerId,
+                            buyerName = buyerName,
+                            sellerId = product.sellerId,
+                            sellerName = product.sellerName,
+                            productId = product.id,
+                            productName = product.name,
+                            productPrice = (product.discountPrice ?: product.price).toString(),
+                            productImageUrl = product.imageUrl
+                        )
+                    )
                 }
             )
         }
@@ -164,7 +176,11 @@ fun ShopeeNavGraph(navController: NavHostController = rememberNavController()) {
                 navArgument("buyerId") { type = NavType.StringType },
                 navArgument("buyerName") { type = NavType.StringType },
                 navArgument("sellerId") { type = NavType.StringType },
-                navArgument("sellerName") { type = NavType.StringType }
+                navArgument("sellerName") { type = NavType.StringType },
+                navArgument("productId") { type = NavType.StringType },
+                navArgument("productName") { type = NavType.StringType },
+                navArgument("productPrice") { type = NavType.StringType },
+                navArgument("productImageUrl") { type = NavType.StringType }
             )
         ) { backStackEntry ->
             fun dec(key: String) = java.net.URLDecoder.decode(backStackEntry.arguments?.getString(key) ?: "", "UTF-8")
@@ -173,7 +189,12 @@ fun ShopeeNavGraph(navController: NavHostController = rememberNavController()) {
                 buyerName = dec("buyerName"),
                 sellerId = dec("sellerId"),
                 sellerName = dec("sellerName"),
-                onBack = { navController.popBackStack() }
+                productId = dec("productId"),
+                productName = dec("productName"),
+                productPrice = dec("productPrice"),
+                productImageUrl = dec("productImageUrl"),
+                onBack = { navController.popBackStack() },
+                onProductClick = { id -> navController.navigate(Screen.ProductDetail.createRoute(id)) }
             )
         }
 

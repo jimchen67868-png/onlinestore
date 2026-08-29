@@ -23,6 +23,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.compose.ui.window.Dialog
@@ -101,6 +102,30 @@ class ChatViewModel(
             isSending.value = false
         }
     }
+
+    fun sendProductCard(
+        buyerId: String,
+        buyerName: String,
+        sellerId: String,
+        sellerName: String,
+        productId: String,
+        productName: String,
+        productPrice: Double,
+        productImageUrl: String
+    ) {
+        viewModelScope.launch {
+            chatRepository.sendMessage(
+                buyerId, buyerName, sellerId, sellerName,
+                content = "",
+                mediaType = "product",
+                productId = productId,
+                productName = productName,
+                productPrice = productPrice,
+                productImageUrl = productImageUrl
+            )
+            messages.value = chatRepository.getMessages(buyerId, sellerId)
+        }
+    }
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -111,6 +136,11 @@ fun ChatScreen(
     sellerId: String,
     sellerName: String,
     onBack: () -> Unit,
+    onProductClick: (String) -> Unit,
+    productId: String = "",
+    productName: String = "",
+    productPrice: String = "",
+    productImageUrl: String = "",
     viewModel: ChatViewModel = viewModel()
 ) {
     var input by remember { mutableStateOf("") }
@@ -128,6 +158,19 @@ fun ChatScreen(
 
     LaunchedEffect(buyerId, sellerId) {
         viewModel.startPolling(buyerId, sellerId)
+    }
+
+    // Auto-send a product preview card when arriving here from a specific product's
+    // "Chat" button. Runs once per screen visit.
+    LaunchedEffect(Unit) {
+        if (productId.isNotBlank()) {
+            viewModel.sendProductCard(
+                buyerId, buyerName, sellerId, sellerName,
+                productId, productName,
+                productPrice.toDoubleOrNull() ?: 0.0,
+                productImageUrl
+            )
+        }
     }
 
     LaunchedEffect(viewModel.messages.value.size) {
@@ -191,46 +234,82 @@ fun ChatScreen(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = if (isMine) Arrangement.End else Arrangement.Start
                 ) {
-                    if (message.mediaUrl.isNotBlank()) {
-                        Box(
-                            modifier = Modifier
-                                .widthIn(max = 220.dp)
-                                .background(MaterialTheme.colorScheme.background, RoundedCornerShape(12.dp))
-                        ) {
-                            when (message.mediaType) {
-                                "video" -> AndroidView(
-                                    modifier = Modifier.fillMaxWidth().height(200.dp),
-                                    factory = { ctx ->
-                                        android.widget.VideoView(ctx).apply {
-                                            setVideoURI(Uri.parse(message.mediaUrl))
-                                            setMediaController(android.widget.MediaController(ctx).also { it.setAnchorView(this) })
-                                        }
+                    when {
+                        message.mediaType == "product" -> {
+                            Row(
+                                modifier = Modifier
+                                    .widthIn(max = 260.dp)
+                                    .background(MaterialTheme.colorScheme.surface, RoundedCornerShape(12.dp))
+                                    .clickable { onProductClick(message.productId) }
+                                    .padding(8.dp),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                if (message.productImageUrl.isNotBlank()) {
+                                    AsyncImage(
+                                        model = message.productImageUrl,
+                                        contentDescription = message.productName,
+                                        modifier = Modifier
+                                            .size(56.dp)
+                                            .background(MaterialTheme.colorScheme.background, RoundedCornerShape(6.dp))
+                                    )
+                                } else {
+                                    Box(
+                                        modifier = Modifier
+                                            .size(56.dp)
+                                            .background(MaterialTheme.colorScheme.background, RoundedCornerShape(6.dp))
+                                    )
+                                }
+                                Spacer(Modifier.width(8.dp))
+                                Column {
+                                    Text(message.productName, fontWeight = FontWeight.Medium, maxLines = 2, style = MaterialTheme.typography.bodyMedium)
+                                    message.productPrice?.let {
+                                        Text("$${it}", color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.Bold)
                                     }
-                                )
-                                else -> AsyncImage(
-                                    model = message.mediaUrl,
-                                    contentDescription = "Attached photo",
-                                    modifier = Modifier
-                                        .fillMaxWidth()
-                                        .height(200.dp)
-                                        .clickable { fullscreenImageUrl = message.mediaUrl }
-                                )
+                                }
                             }
                         }
-                    } else {
-                        Box(
-                            modifier = Modifier
-                                .background(
-                                    if (isMine) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.background,
-                                    RoundedCornerShape(12.dp)
+                        message.mediaUrl.isNotBlank() -> {
+                            Box(
+                                modifier = Modifier
+                                    .widthIn(max = 220.dp)
+                                    .background(MaterialTheme.colorScheme.background, RoundedCornerShape(12.dp))
+                            ) {
+                                when (message.mediaType) {
+                                    "video" -> AndroidView(
+                                        modifier = Modifier.fillMaxWidth().height(200.dp),
+                                        factory = { ctx ->
+                                            android.widget.VideoView(ctx).apply {
+                                                setVideoURI(Uri.parse(message.mediaUrl))
+                                                setMediaController(android.widget.MediaController(ctx).also { it.setAnchorView(this) })
+                                            }
+                                        }
+                                    )
+                                    else -> AsyncImage(
+                                        model = message.mediaUrl,
+                                        contentDescription = "Attached photo",
+                                        modifier = Modifier
+                                            .fillMaxWidth()
+                                            .height(200.dp)
+                                            .clickable { fullscreenImageUrl = message.mediaUrl }
+                                    )
+                                }
+                            }
+                        }
+                        else -> {
+                            Box(
+                                modifier = Modifier
+                                    .background(
+                                        if (isMine) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.background,
+                                        RoundedCornerShape(12.dp)
+                                    )
+                                    .padding(horizontal = 12.dp, vertical = 8.dp)
+                                    .widthIn(max = 260.dp)
+                            ) {
+                                Text(
+                                    message.content,
+                                    color = if (isMine) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onBackground
                                 )
-                                .padding(horizontal = 12.dp, vertical = 8.dp)
-                                .widthIn(max = 260.dp)
-                        ) {
-                            Text(
-                                message.content,
-                                color = if (isMine) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onBackground
-                            )
+                            }
                         }
                     }
                 }

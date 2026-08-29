@@ -21,10 +21,20 @@ sealed class Screen(val route: String) {
     }
     object FollowedShops : Screen("followed_shops")
     object SellerVouchers : Screen("seller_vouchers")
-    object Chat : Screen("chat/{buyerId}/{buyerName}/{sellerId}/{sellerName}") {
-        fun createRoute(buyerId: String, buyerName: String, sellerId: String, sellerName: String): String {
+    object Chat : Screen("chat/{buyerId}/{buyerName}/{sellerId}/{sellerName}/{productId}/{productName}/{productPrice}/{productImageUrl}") {
+        fun createRoute(
+            buyerId: String,
+            buyerName: String,
+            sellerId: String,
+            sellerName: String,
+            productId: String = "",
+            productName: String = "",
+            productPrice: String = "",
+            productImageUrl: String = ""
+        ): String {
             fun enc(s: String) = java.net.URLEncoder.encode(s, "UTF-8")
-            return "chat/${enc(buyerId)}/${enc(buyerName)}/${enc(sellerId)}/${enc(sellerName)}"
+            return "chat/${enc(buyerId)}/${enc(buyerName)}/${enc(sellerId)}/${enc(sellerName)}/" +
+                "${enc(productId)}/${enc(productName)}/${enc(productPrice)}/${enc(productImageUrl)}"
         }
     }
     object ChatList : Screen("chat_list")
