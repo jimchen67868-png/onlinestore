@@ -34,3 +34,12 @@ object ShippingOptions {
         ShippingOption("Free Shipping", 0.0, "5-7 days")
     )
 }
+
+@Serializable
+data class SellerShippingOption(
+    val id: String = "",
+    @SerialName("seller_id") val sellerId: String = "",
+    val name: String = "",
+    val cost: Double = 0.0,
+    @SerialName("eta_days") val etaDays: String = ""
+)

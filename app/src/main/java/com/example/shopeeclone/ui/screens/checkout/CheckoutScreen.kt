@@ -12,7 +12,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
-import com.example.shopeeclone.data.model.ShippingOptions
 import com.example.shopeeclone.data.repository.PendingVoucherHolder
 import com.example.shopeeclone.viewmodel.CartViewModel
 
@@ -28,6 +27,7 @@ fun CheckoutScreen(
     var voucherInput by remember { mutableStateOf("") }
 
     LaunchedEffect(Unit) {
+        viewModel.loadShippingOptionsForCart()
         PendingVoucherHolder.code?.let { code ->
             viewModel.applyVoucher(code)
             PendingVoucherHolder.code = null
@@ -79,18 +79,24 @@ fun CheckoutScreen(
 
             Spacer(Modifier.height(16.dp))
             Text("Shipping Method", fontWeight = FontWeight.Bold)
-            ShippingOptions.all.forEach { option ->
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    modifier = Modifier.fillMaxWidth()
-                ) {
-                    RadioButton(
-                        selected = viewModel.selectedShipping.value == option,
-                        onClick = { viewModel.selectedShipping.value = option }
-                    )
-                    Column {
-                        Text("${option.name} — ${if (option.cost > 0) "$${"%.2f".format(option.cost)}" else "Free"}")
-                        Text("Estimated delivery: ${option.etaDays}", style = MaterialTheme.typography.bodySmall)
+            if (viewModel.isLoadingShippingOptions.value) {
+                Box(Modifier.fillMaxWidth().padding(12.dp), contentAlignment = Alignment.Center) {
+                    CircularProgressIndicator()
+                }
+            } else {
+                viewModel.availableShippingOptions.value.forEach { option ->
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        RadioButton(
+                            selected = viewModel.selectedShipping.value == option,
+                            onClick = { viewModel.selectedShipping.value = option }
+                        )
+                        Column {
+                            Text("${option.name} — ${if (option.cost > 0) "$${"%.2f".format(option.cost)}" else "Free"}")
+                            Text("Estimated delivery: ${option.etaDays}", style = MaterialTheme.typography.bodySmall)
+                        }
                     }
                 }
             }

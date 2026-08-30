@@ -6,12 +6,14 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.shopeeclone.data.model.CartItem
 import com.example.shopeeclone.data.model.Product
+import com.example.shopeeclone.data.model.ShippingOption
 import com.example.shopeeclone.data.model.ShippingOptions
 import com.example.shopeeclone.data.model.Voucher
 import com.example.shopeeclone.data.repository.AuthRepository
 import com.example.shopeeclone.data.repository.CartRepository
 import com.example.shopeeclone.data.repository.FollowRepository
 import com.example.shopeeclone.data.repository.OrderRepository
+import com.example.shopeeclone.data.repository.ShippingRepository
 import com.example.shopeeclone.data.repository.VoucherRepository
 import kotlinx.coroutines.launch
 
@@ -19,7 +21,8 @@ class CartViewModel(
     private val orderRepository: OrderRepository = OrderRepository(),
     private val authRepository: AuthRepository = AuthRepository(),
     private val voucherRepository: VoucherRepository = VoucherRepository(),
-    private val followRepository: FollowRepository = FollowRepository()
+    private val followRepository: FollowRepository = FollowRepository(),
+    private val shippingRepository: ShippingRepository = ShippingRepository()
 ) : ViewModel() {
 
     // SnapshotStateList (rather than mutableStateOf<List<...>>) guarantees Compose
@@ -33,7 +36,9 @@ class CartViewModel(
     val voucherErrorMessage = mutableStateOf<String?>(null)
     val isValidatingVoucher = mutableStateOf(false)
 
+    val availableShippingOptions = mutableStateOf(ShippingOptions.all)
     val selectedShipping = mutableStateOf(ShippingOptions.all.first())
+    val isLoadingShippingOptions = mutableStateOf(false)
 
     fun refresh() {
         items.clear()
@@ -66,6 +71,33 @@ class CartViewModel(
     fun shippingCost(): Double = selectedShipping.value.cost
 
     fun finalTotal(): Double = (total() - discountAmount() + shippingCost()).coerceAtLeast(0.0)
+
+    /**
+     * Loads shipping options for the current cart. If every item is from the same
+     * seller and that seller has configured their own options, those are used;
+     * otherwise falls back to the default Standard/Express/Free list (this also
+     * covers mixed-seller carts, since a single order can't offer per-seller
+     * shipping choices without splitting the order).
+     */
+    fun loadShippingOptionsForCart() {
+        viewModelScope.launch {
+            isLoadingShippingOptions.value = true
+            val sellerIds = CartRepository.items.map { it.product.sellerId }.distinct()
+            val options = if (sellerIds.size == 1 && sellerIds.first().isNotBlank()) {
+                val sellerOptions = shippingRepository.getSellerShippingOptions(sellerIds.first())
+                if (sellerOptions.isNotEmpty()) {
+                    sellerOptions.map { ShippingOption(it.name, it.cost, it.etaDays) }
+                } else {
+                    ShippingOptions.all
+                }
+            } else {
+                ShippingOptions.all
+            }
+            availableShippingOptions.value = options
+            selectedShipping.value = options.first()
+            isLoadingShippingOptions.value = false
+        }
+    }
 
     fun applyVoucher(code: String) {
         if (code.isBlank()) return
