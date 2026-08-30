@@ -28,7 +28,9 @@ class CartViewModel(
     // SnapshotStateList (rather than mutableStateOf<List<...>>) guarantees Compose
     // observes every add/remove/update, avoiding cases where reassigning a whole
     // list doesn't reliably trigger recomposition.
-    val items = mutableStateListOf<CartItem>().apply { addAll(CartRepository.items) }
+    val items = mutableStateListOf<CartItem>()
+    val selectedProductIds = mutableStateListOf<String>()
+
     val isPlacingOrder = mutableStateOf(false)
     val orderPlacedSuccessfully = mutableStateOf(false)
 
@@ -40,9 +42,16 @@ class CartViewModel(
     val selectedShipping = mutableStateOf(ShippingOptions.all.first())
     val isLoadingShippingOptions = mutableStateOf(false)
 
+    init {
+        refresh()
+    }
+
     fun refresh() {
         items.clear()
         items.addAll(CartRepository.items)
+        val currentIds = items.map { it.product.id }
+        selectedProductIds.retainAll(currentIds)
+        currentIds.forEach { id -> if (id !in selectedProductIds) selectedProductIds.add(id) }
     }
 
     fun addToCart(product: Product, quantity: Int = 1) {
@@ -63,7 +72,33 @@ class CartViewModel(
         }
     }
 
-    fun total(): Double = CartRepository.total()
+    fun toggleSelected(productId: String) {
+        if (productId in selectedProductIds) selectedProductIds.remove(productId)
+        else selectedProductIds.add(productId)
+    }
+
+    fun toggleSelectAll() {
+        if (selectedProductIds.size == items.size) {
+            selectedProductIds.clear()
+        } else {
+            selectedProductIds.clear()
+            selectedProductIds.addAll(items.map { it.product.id })
+        }
+    }
+
+    fun toggleSelectShop(sellerName: String) {
+        val shopProductIds = items.filter { it.product.sellerName == sellerName }.map { it.product.id }
+        val allSelected = shopProductIds.all { it in selectedProductIds }
+        if (allSelected) {
+            selectedProductIds.removeAll(shopProductIds)
+        } else {
+            shopProductIds.forEach { if (it !in selectedProductIds) selectedProductIds.add(it) }
+        }
+    }
+
+    fun selectedItems(): List<CartItem> = items.filter { it.product.id in selectedProductIds }
+
+    fun total(): Double = selectedItems().sumOf { it.subtotal }
 
     fun discountAmount(): Double =
         appliedVoucher.value?.let { voucherRepository.calculateDiscount(it, total()) } ?: 0.0
@@ -73,16 +108,14 @@ class CartViewModel(
     fun finalTotal(): Double = (total() - discountAmount() + shippingCost()).coerceAtLeast(0.0)
 
     /**
-     * Loads shipping options for the current cart. If every item is from the same
-     * seller and that seller has configured their own options, those are used;
-     * otherwise falls back to the default Standard/Express/Free list (this also
-     * covers mixed-seller carts, since a single order can't offer per-seller
-     * shipping choices without splitting the order).
+     * Loads shipping options based on the currently *selected* items. If every
+     * selected item is from the same seller and that seller has configured their
+     * own options, those are used; otherwise falls back to the default list.
      */
     fun loadShippingOptionsForCart() {
         viewModelScope.launch {
             isLoadingShippingOptions.value = true
-            val sellerIds = CartRepository.items.map { it.product.sellerId }.distinct()
+            val sellerIds = selectedItems().map { it.product.sellerId }.distinct()
             val options = if (sellerIds.size == 1 && sellerIds.first().isNotBlank()) {
                 val sellerOptions = shippingRepository.getSellerShippingOptions(sellerIds.first())
                 if (sellerOptions.isNotEmpty()) {
@@ -132,23 +165,23 @@ class CartViewModel(
             val voucher = appliedVoucher.value
             val discount = discountAmount()
             val shipping = selectedShipping.value
+            val itemsToOrder = selectedItems()
             val result = orderRepository.placeOrder(
                 userId = userId,
-                items = CartRepository.items,
+                items = itemsToOrder,
                 address = address,
                 discountAmount = discount,
                 voucherCode = voucher?.code ?: "",
                 shippingMethod = shipping.name,
                 shippingCost = shipping.cost
             )
-            if (result.isSuccess && voucher != null) {
-                voucherRepository.incrementUsage(voucher)
+            if (result.isSuccess) {
+                CartRepository.removeAll(itemsToOrder.map { it.product.id })
+                if (voucher != null) voucherRepository.incrementUsage(voucher)
+                appliedVoucher.value = null
             }
             isPlacingOrder.value = false
             orderPlacedSuccessfully.value = result.isSuccess
-            if (result.isSuccess) {
-                appliedVoucher.value = null
-            }
             refresh()
         }
     }

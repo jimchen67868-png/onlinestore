@@ -146,7 +146,7 @@ fun CheckoutScreen(
 
             Spacer(Modifier.height(16.dp))
             Text("Order Summary", fontWeight = FontWeight.Bold)
-            viewModel.items.forEach {
+            viewModel.selectedItems().forEach {
                 Text("${it.product.name} × ${it.quantity} — $${"%.2f".format(it.subtotal)}")
             }
             Spacer(Modifier.height(8.dp))

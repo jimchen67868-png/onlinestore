@@ -59,6 +59,12 @@ object CartRepository {
         persist()
     }
 
+    /** Removes only the given products from the cart — used for partial (selected-items-only) checkout. */
+    fun removeAll(productIds: List<String>) {
+        _items.removeAll { it.product.id in productIds }
+        persist()
+    }
+
     fun updateQuantity(productId: String, quantity: Int) {
         val index = _items.indexOfFirst { it.product.id == productId }
         if (index != -1) _items[index] = _items[index].copy(quantity = quantity)
@@ -99,7 +105,9 @@ class OrderRepository(
             shippingCost = shippingCost
         )
         client.postgrest["orders"].insert(order)
-        CartRepository.clear()
+        // Note: cart removal is the caller's responsibility (CartViewModel), since
+        // only the items that were actually part of this order should be removed —
+        // unselected items should remain in the cart for later.
         Result.success(order)
     } catch (e: Exception) {
         Result.failure(e)
