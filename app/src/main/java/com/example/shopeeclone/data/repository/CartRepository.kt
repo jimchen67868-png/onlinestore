@@ -112,4 +112,17 @@ class OrderRepository(
     } catch (e: Exception) {
         emptyList()
     }
+
+    /**
+     * Fetches every order visible to the current user under RLS — this includes
+     * their own purchases plus (via a separate policy) any order that contains
+     * at least one item they sold. Used to compute seller stats; callers should
+     * further filter items by seller_id since this can include orders that are
+     * only relevant because the user was the buyer.
+     */
+    suspend fun getAllVisibleOrders(): List<Order> = try {
+        client.postgrest["orders"].select().decodeList<Order>()
+    } catch (e: Exception) {
+        emptyList()
+    }
 }

@@ -143,6 +143,7 @@ class SellerViewModel(
 fun SellerDashboardScreen(
     onBack: () -> Unit,
     onManageVouchers: () -> Unit,
+    onViewStats: () -> Unit,
     viewModel: SellerViewModel = viewModel()
 ) {
     val context = LocalContext.current
@@ -205,6 +206,7 @@ fun SellerDashboardScreen(
                 title = { Text("Seller Dashboard") },
                 navigationIcon = { IconButton(onClick = onBack) { Icon(Icons.Default.ArrowBack, contentDescription = "Back") } },
                 actions = {
+                    TextButton(onClick = onViewStats) { Text("Stats") }
                     TextButton(onClick = onManageVouchers) { Text("Vouchers") }
                 }
             )
