@@ -10,6 +10,7 @@ import com.example.shopeeclone.data.model.ShippingOptions
 import com.example.shopeeclone.data.model.Voucher
 import com.example.shopeeclone.data.repository.AuthRepository
 import com.example.shopeeclone.data.repository.CartRepository
+import com.example.shopeeclone.data.repository.FollowRepository
 import com.example.shopeeclone.data.repository.OrderRepository
 import com.example.shopeeclone.data.repository.VoucherRepository
 import kotlinx.coroutines.launch
@@ -17,7 +18,8 @@ import kotlinx.coroutines.launch
 class CartViewModel(
     private val orderRepository: OrderRepository = OrderRepository(),
     private val authRepository: AuthRepository = AuthRepository(),
-    private val voucherRepository: VoucherRepository = VoucherRepository()
+    private val voucherRepository: VoucherRepository = VoucherRepository(),
+    private val followRepository: FollowRepository = FollowRepository()
 ) : ViewModel() {
 
     // SnapshotStateList (rather than mutableStateOf<List<...>>) guarantees Compose
@@ -71,13 +73,18 @@ class CartViewModel(
             isValidatingVoucher.value = true
             voucherErrorMessage.value = null
             val result = voucherRepository.validateVoucher(code, total())
-            isValidatingVoucher.value = false
-            result.onSuccess {
-                appliedVoucher.value = it
+            result.onSuccess { voucher ->
+                if (voucher.voucherType == "follow" && !followRepository.isFollowing(voucher.sellerId)) {
+                    appliedVoucher.value = null
+                    voucherErrorMessage.value = "Follow this shop to use this voucher"
+                } else {
+                    appliedVoucher.value = voucher
+                }
             }.onFailure {
                 appliedVoucher.value = null
                 voucherErrorMessage.value = it.message ?: "Invalid voucher"
             }
+            isValidatingVoucher.value = false
         }
     }
 

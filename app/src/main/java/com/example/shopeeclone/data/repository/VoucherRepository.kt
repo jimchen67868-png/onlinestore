@@ -7,6 +7,12 @@ import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
 
+// Holds a voucher code the buyer picked from a shop's "Available Vouchers" list
+// so Checkout can auto-apply it when they get there. Cleared after use.
+object PendingVoucherHolder {
+    var code: String? = null
+}
+
 class VoucherRepository(
     private val client: io.github.jan.supabase.SupabaseClient = SupabaseClient.client
 ) {
@@ -63,6 +69,19 @@ class VoucherRepository(
         Result.success(Unit)
     } catch (e: Exception) {
         Result.failure(e)
+    }
+
+    fun isVoucherActive(voucher: Voucher): Boolean {
+        voucher.expiresAt?.let { expiryStr ->
+            try {
+                val expiry = dateFormat.parse(expiryStr)
+                if (expiry != null && expiry.before(Date())) return false
+            } catch (e: Exception) {
+                // Unparseable date — treat as active rather than hide a valid voucher.
+            }
+        }
+        if (voucher.usageLimit > 0 && voucher.timesUsed >= voucher.usageLimit) return false
+        return true
     }
 
     suspend fun getSellerVouchers(sellerId: String): List<Voucher> = try {

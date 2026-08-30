@@ -14,5 +14,6 @@ data class Voucher(
     @SerialName("max_discount") val maxDiscount: Double? = null,
     @SerialName("usage_limit") val usageLimit: Int = 0, // 0 = unlimited
     @SerialName("times_used") val timesUsed: Int = 0,
-    @SerialName("expires_at") val expiresAt: String? = null // "yyyy-MM-dd", null = never expires
+    @SerialName("expires_at") val expiresAt: String? = null, // "yyyy-MM-dd", null = never expires
+    @SerialName("voucher_type") val voucherType: String = "shop" // "shop" (anyone) or "follow" (followers only)
 )

@@ -13,6 +13,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.shopeeclone.data.model.ShippingOptions
+import com.example.shopeeclone.data.repository.PendingVoucherHolder
 import com.example.shopeeclone.viewmodel.CartViewModel
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -25,6 +26,13 @@ fun CheckoutScreen(
     var address by remember { mutableStateOf("") }
     var paymentMethod by remember { mutableStateOf("Cash on Delivery") }
     var voucherInput by remember { mutableStateOf("") }
+
+    LaunchedEffect(Unit) {
+        PendingVoucherHolder.code?.let { code ->
+            viewModel.applyVoucher(code)
+            PendingVoucherHolder.code = null
+        }
+    }
 
     LaunchedEffect(viewModel.orderPlacedSuccessfully.value) {
         if (viewModel.orderPlacedSuccessfully.value) onOrderPlaced()
@@ -102,7 +110,8 @@ fun CheckoutScreen(
             val voucher = viewModel.appliedVoucher.value
             if (voucher != null) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
-                    Text("\"${voucher.code}\" applied — you saved $${"%.2f".format(viewModel.discountAmount())}", color = MaterialTheme.colorScheme.primary)
+                    val typeLabel = if (voucher.voucherType == "follow") " (Follow Voucher)" else ""
+                    Text("\"${voucher.code}\"$typeLabel applied — you saved $${"%.2f".format(viewModel.discountAmount())}", color = MaterialTheme.colorScheme.primary)
                     Spacer(Modifier.width(8.dp))
                     TextButton(onClick = { viewModel.removeVoucher(); voucherInput = "" }) { Text("Remove") }
                 }

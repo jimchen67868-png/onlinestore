@@ -163,7 +163,8 @@ fun ShopeeNavGraph(navController: NavHostController = rememberNavController()) {
                 onProductClick = { id -> navController.navigate(Screen.ProductDetail.createRoute(id)) },
                 onChatWithSeller = { buyerId, buyerName, sId, sName ->
                     navController.navigate(Screen.Chat.createRoute(buyerId, buyerName, sId, sName))
-                }
+                },
+                onGoToCart = { navController.navigate(Screen.Cart.route) }
             )
         }
 

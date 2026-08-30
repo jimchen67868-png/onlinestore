@@ -53,6 +53,7 @@ class SellerVoucherViewModel(
         maxDiscount: Double?,
         usageLimit: Int,
         expiresAt: String?,
+        voucherType: String,
         onDone: () -> Unit
     ) {
         viewModelScope.launch {
@@ -68,7 +69,8 @@ class SellerVoucherViewModel(
                 maxDiscount = maxDiscount,
                 usageLimit = usageLimit,
                 timesUsed = 0,
-                expiresAt = expiresAt
+                expiresAt = expiresAt,
+                voucherType = voucherType
             )
             val result = voucherRepository.createVoucher(voucher)
             isSaving.value = false
@@ -102,9 +104,11 @@ fun SellerVoucherScreen(
     var maxDiscount by remember { mutableStateOf("") }
     var usageLimit by remember { mutableStateOf("") }
     var expiresAt by remember { mutableStateOf("") }
+    var isFollowVoucher by remember { mutableStateOf(false) }
 
     fun clearForm() {
         code = ""; discountValue = ""; minSpend = ""; maxDiscount = ""; usageLimit = ""; expiresAt = ""
+        isFollowVoucher = false
     }
 
     Scaffold(
@@ -133,6 +137,21 @@ fun SellerVoucherScreen(
                     FilterChip(selected = !isPercentage, onClick = { isPercentage = false }, label = { Text("Fixed $") })
                     Spacer(Modifier.width(8.dp))
                     FilterChip(selected = isPercentage, onClick = { isPercentage = true }, label = { Text("Percentage %") })
+                }
+                Spacer(Modifier.height(8.dp))
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Text("Voucher type:")
+                    Spacer(Modifier.width(8.dp))
+                    FilterChip(selected = !isFollowVoucher, onClick = { isFollowVoucher = false }, label = { Text("Shop Voucher") })
+                    Spacer(Modifier.width(8.dp))
+                    FilterChip(selected = isFollowVoucher, onClick = { isFollowVoucher = true }, label = { Text("Follow Voucher") })
+                }
+                if (isFollowVoucher) {
+                    Spacer(Modifier.height(4.dp))
+                    Text(
+                        "Only buyers who follow your shop can use this voucher.",
+                        style = MaterialTheme.typography.bodySmall
+                    )
                 }
                 Spacer(Modifier.height(8.dp))
                 OutlinedTextField(
@@ -188,6 +207,7 @@ fun SellerVoucherScreen(
                             maxDiscount = maxDiscount.toDoubleOrNull(),
                             usageLimit = usageLimit.toIntOrNull() ?: 0,
                             expiresAt = expiresAt.ifBlank { null },
+                            voucherType = if (isFollowVoucher) "follow" else "shop",
                             onDone = { clearForm() }
                         )
                     },
@@ -222,8 +242,9 @@ fun SellerVoucherScreen(
                             Text(voucher.code, fontWeight = FontWeight.Bold)
                             val discountText = if (voucher.discountType == "percentage")
                                 "${voucher.discountValue.toInt()}% off" else "$${voucher.discountValue} off"
+                            val typeText = if (voucher.voucherType == "follow") " · Follow Voucher" else " · Shop Voucher"
                             Text(
-                                "$discountText · Used ${voucher.timesUsed}${if (voucher.usageLimit > 0) "/${voucher.usageLimit}" else ""}",
+                                "$discountText$typeText · Used ${voucher.timesUsed}${if (voucher.usageLimit > 0) "/${voucher.usageLimit}" else ""}",
                                 style = MaterialTheme.typography.bodySmall
                             )
                         }

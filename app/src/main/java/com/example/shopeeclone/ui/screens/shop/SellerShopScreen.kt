@@ -1,9 +1,13 @@
 package com.example.shopeeclone.ui.screens.shop
 
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
+import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material3.*
@@ -15,17 +19,22 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import androidx.lifecycle.viewmodel.compose.viewModel
+import com.example.shopeeclone.data.model.Voucher
 import com.example.shopeeclone.data.repository.AuthRepository
 import com.example.shopeeclone.data.repository.FollowRepository
+import com.example.shopeeclone.data.repository.PendingVoucherHolder
 import com.example.shopeeclone.data.repository.ProductRepository
+import com.example.shopeeclone.data.repository.VoucherRepository
 import com.example.shopeeclone.ui.screens.home.ProductCard
 import kotlinx.coroutines.launch
 
 class SellerShopViewModel(
     private val productRepository: ProductRepository = ProductRepository(),
-    private val followRepository: FollowRepository = FollowRepository()
+    private val followRepository: FollowRepository = FollowRepository(),
+    private val voucherRepository: VoucherRepository = VoucherRepository()
 ) : ViewModel() {
     val products = mutableStateOf<List<com.example.shopeeclone.data.model.Product>>(emptyList())
+    val vouchers = mutableStateOf<List<Voucher>>(emptyList())
     val isLoading = mutableStateOf(true)
     val isFollowing = mutableStateOf(false)
     val isTogglingFollow = mutableStateOf(false)
@@ -35,6 +44,8 @@ class SellerShopViewModel(
             isLoading.value = true
             products.value = productRepository.getProductsForSeller(sellerId)
             isFollowing.value = followRepository.isFollowing(sellerId)
+            vouchers.value = voucherRepository.getSellerVouchers(sellerId)
+                .filter { voucherRepository.isVoucherActive(it) }
             isLoading.value = false
         }
     }
@@ -60,10 +71,12 @@ fun SellerShopScreen(
     onBack: () -> Unit,
     onProductClick: (String) -> Unit,
     onChatWithSeller: (String, String, String, String) -> Unit, // buyerId, buyerName, sellerId, sellerName
+    onGoToCart: () -> Unit,
     viewModel: SellerShopViewModel = viewModel(),
     authRepository: AuthRepository = AuthRepository()
 ) {
     val coroutineScope = rememberCoroutineScope()
+    var selectedVoucherCode by remember { mutableStateOf<String?>(null) }
     LaunchedEffect(sellerId) { viewModel.load(sellerId) }
 
     Scaffold(
@@ -106,6 +119,76 @@ fun SellerShopScreen(
                     Text("Chat")
                 }
             }
+
+            if (viewModel.vouchers.value.isNotEmpty()) {
+                Text(
+                    "Available Vouchers",
+                    fontWeight = FontWeight.Bold,
+                    style = MaterialTheme.typography.bodyMedium,
+                    modifier = Modifier.padding(horizontal = 16.dp)
+                )
+                Spacer(Modifier.height(8.dp))
+                LazyRow(
+                    contentPadding = PaddingValues(horizontal = 16.dp),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    items(viewModel.vouchers.value, key = { it.id }) { voucher ->
+                        val locked = voucher.voucherType == "follow" && !viewModel.isFollowing.value
+                        Column(
+                            modifier = Modifier
+                                .width(180.dp)
+                                .background(MaterialTheme.colorScheme.surface, RoundedCornerShape(8.dp))
+                                .padding(12.dp)
+                        ) {
+                            val discountText = if (voucher.discountType == "percentage")
+                                "${voucher.discountValue.toInt()}% OFF" else "$${voucher.discountValue} OFF"
+                            Text(discountText, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary)
+                            if (voucher.minSpend > 0) {
+                                Text("Min. spend $${"%.2f".format(voucher.minSpend)}", style = MaterialTheme.typography.bodySmall)
+                            }
+                            Text(
+                                if (voucher.voucherType == "follow") "Follow Voucher" else "Shop Voucher",
+                                style = MaterialTheme.typography.labelSmall
+                            )
+                            Spacer(Modifier.height(6.dp))
+                            if (locked) {
+                                Text(
+                                    "Follow shop to unlock",
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
+                                )
+                            } else {
+                                Button(
+                                    onClick = {
+                                        PendingVoucherHolder.code = voucher.code
+                                        selectedVoucherCode = voucher.code
+                                    },
+                                    modifier = Modifier.fillMaxWidth()
+                                ) {
+                                    Text(if (selectedVoucherCode == voucher.code) "Selected" else "Use")
+                                }
+                            }
+                        }
+                    }
+                }
+                if (selectedVoucherCode != null) {
+                    Spacer(Modifier.height(4.dp))
+                    Row(
+                        modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text(
+                            "\"$selectedVoucherCode\" will be applied at checkout.",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.primary,
+                            modifier = Modifier.weight(1f)
+                        )
+                        TextButton(onClick = onGoToCart) { Text("Go to Cart") }
+                    }
+                }
+                Spacer(Modifier.height(8.dp))
+            }
+
             Divider()
 
             if (viewModel.isLoading.value) {
