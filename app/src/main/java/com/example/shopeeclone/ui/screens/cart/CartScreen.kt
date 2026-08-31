@@ -47,7 +47,7 @@ fun CartScreen(
                             checked = viewModel.selectedProductIds.size == viewModel.items.size && viewModel.items.isNotEmpty(),
                             onCheckedChange = { viewModel.toggleSelectAll() }
                         )
-                        Text("All", modifier = Modifier.weight(0f))
+                        Text("All")
                         Spacer(Modifier.weight(1f))
                         Column(horizontalAlignment = Alignment.End) {
                             Text("Total: $${"%.2f".format(viewModel.total())}", fontWeight = FontWeight.Bold, style = MaterialTheme.typography.titleMedium)
