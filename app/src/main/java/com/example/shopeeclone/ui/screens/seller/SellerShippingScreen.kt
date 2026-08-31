@@ -1,11 +1,10 @@
 package com.example.shopeeclone.ui.screens.seller
 
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
-import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -15,7 +14,9 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import androidx.lifecycle.viewmodel.compose.viewModel
-import com.example.shopeeclone.data.model.SellerShippingOption
+import com.example.shopeeclone.data.model.SellerShippingChannel
+import com.example.shopeeclone.data.model.SellerShippingSettings
+import com.example.shopeeclone.data.model.ShippingChannelCatalog
 import com.example.shopeeclone.data.repository.AuthRepository
 import com.example.shopeeclone.data.repository.ShippingRepository
 import kotlinx.coroutines.launch
@@ -25,13 +26,24 @@ class SellerShippingViewModel(
     private val authRepository: AuthRepository = AuthRepository(),
     private val shippingRepository: ShippingRepository = ShippingRepository()
 ) : ViewModel() {
-    val options = mutableStateOf<List<SellerShippingOption>>(emptyList())
+    private val sellerId: String
+        get() = authRepository.currentUserId ?: "guest"
+
+    val weight = mutableStateOf("")
+    val length = mutableStateOf("")
+    val width = mutableStateOf("")
+    val height = mutableStateOf("")
+    val dangerousGoods = mutableStateOf(false)
+    val preOrder = mutableStateOf(false)
+    val shipOutDays = mutableStateOf("1")
+
+    // channelKey -> (enabled, feeText)
+    val channelEnabled = mutableStateMapOf<String, Boolean>()
+    val channelFee = mutableStateMapOf<String, String>()
+
     val isLoading = mutableStateOf(true)
     val isSaving = mutableStateOf(false)
     val statusMessage = mutableStateOf<String?>(null)
-
-    private val sellerId: String
-        get() = authRepository.currentUserId ?: "guest"
 
     init {
         load()
@@ -40,37 +52,62 @@ class SellerShippingViewModel(
     fun load() {
         viewModelScope.launch {
             isLoading.value = true
-            options.value = shippingRepository.getSellerShippingOptions(sellerId)
+            shippingRepository.getSettings(sellerId)?.let {
+                weight.value = if (it.weightKg > 0) it.weightKg.toString() else ""
+                length.value = if (it.lengthCm > 0) it.lengthCm.toString() else ""
+                width.value = if (it.widthCm > 0) it.widthCm.toString() else ""
+                height.value = if (it.heightCm > 0) it.heightCm.toString() else ""
+                dangerousGoods.value = it.dangerousGoods
+                preOrder.value = it.preOrder
+                shipOutDays.value = it.shipOutDays.toString()
+            }
+            val existingChannels = shippingRepository.getChannels(sellerId).associateBy { it.channelKey }
+            ShippingChannelCatalog.all.forEach { def ->
+                val existing = existingChannels[def.key]
+                channelEnabled[def.key] = existing?.enabled ?: false
+                channelFee[def.key] = existing?.fee?.toString() ?: "0"
+            }
             isLoading.value = false
         }
     }
 
-    fun createOption(name: String, cost: Double, etaDays: String, onDone: () -> Unit) {
+    fun save(onDone: () -> Unit) {
         viewModelScope.launch {
             isSaving.value = true
             statusMessage.value = null
-            val option = SellerShippingOption(
-                id = UUID.randomUUID().toString(),
-                sellerId = sellerId,
-                name = name,
-                cost = cost,
-                etaDays = etaDays
-            )
-            val result = shippingRepository.createOption(option)
-            isSaving.value = false
-            result.onSuccess {
-                statusMessage.value = "Shipping option added!"
-                load()
-                onDone()
-            }.onFailure {
-                statusMessage.value = "Failed: ${it.message}"
-            }
-        }
-    }
+            try {
+                shippingRepository.upsertSettings(
+                    SellerShippingSettings(
+                        sellerId = sellerId,
+                        weightKg = weight.value.toDoubleOrNull() ?: 0.0,
+                        lengthCm = length.value.toDoubleOrNull() ?: 0.0,
+                        widthCm = width.value.toDoubleOrNull() ?: 0.0,
+                        heightCm = height.value.toDoubleOrNull() ?: 0.0,
+                        dangerousGoods = dangerousGoods.value,
+                        preOrder = preOrder.value,
+                        shipOutDays = shipOutDays.value.toIntOrNull() ?: 1
+                    )
+                ).getOrThrow()
 
-    fun deleteOption(id: String) {
-        viewModelScope.launch {
-            shippingRepository.deleteOption(id).onSuccess { load() }
+                ShippingChannelCatalog.all.forEach { def ->
+                    shippingRepository.upsertChannel(
+                        SellerShippingChannel(
+                            id = UUID.randomUUID().toString(),
+                            sellerId = sellerId,
+                            channelKey = def.key,
+                            enabled = channelEnabled[def.key] ?: false,
+                            fee = channelFee[def.key]?.toDoubleOrNull() ?: 0.0
+                        )
+                    ).getOrThrow()
+                }
+
+                statusMessage.value = "Shipping settings saved!"
+                onDone()
+            } catch (e: Exception) {
+                statusMessage.value = "Failed: ${e.message}"
+            } finally {
+                isSaving.value = false
+            }
         }
     }
 }
@@ -81,103 +118,155 @@ fun SellerShippingScreen(
     onBack: () -> Unit,
     viewModel: SellerShippingViewModel = viewModel()
 ) {
-    var name by remember { mutableStateOf("") }
-    var cost by remember { mutableStateOf("") }
-    var etaDays by remember { mutableStateOf("") }
-
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("Shipping Options") },
+                title = { Text("Shipping") },
                 navigationIcon = { IconButton(onClick = onBack) { Icon(Icons.Default.ArrowBack, contentDescription = "Back") } }
             )
         }
     ) { padding ->
-        LazyColumn(modifier = Modifier.fillMaxSize().padding(padding).padding(16.dp)) {
-            item {
+        if (viewModel.isLoading.value) {
+            Box(Modifier.fillMaxSize().padding(padding), contentAlignment = Alignment.Center) {
+                CircularProgressIndicator()
+            }
+        } else {
+            Column(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(padding)
+                    .verticalScroll(rememberScrollState())
+                    .padding(16.dp)
+            ) {
                 Text(
-                    "Buyers will see these shipping options at checkout when their order contains only your products. If you don't add any, they'll see the default Standard / Express / Free options.",
+                    "These settings apply shop-wide to all your products.",
                     style = MaterialTheme.typography.bodySmall
                 )
                 Spacer(Modifier.height(16.dp))
-                Text("Add Shipping Option", fontWeight = FontWeight.Bold, style = MaterialTheme.typography.titleMedium)
-                Spacer(Modifier.height(12.dp))
+
+                Text("Weight", fontWeight = FontWeight.Bold)
+                Spacer(Modifier.height(4.dp))
                 OutlinedTextField(
-                    value = name,
-                    onValueChange = { name = it },
-                    label = { Text("Method name (e.g. Standard, Express, Same-Day)") },
-                    modifier = Modifier.fillMaxWidth()
-                )
-                Spacer(Modifier.height(8.dp))
-                OutlinedTextField(
-                    value = cost,
-                    onValueChange = { cost = it },
-                    label = { Text("Cost ($, 0 for free)") },
-                    modifier = Modifier.fillMaxWidth()
-                )
-                Spacer(Modifier.height(8.dp))
-                OutlinedTextField(
-                    value = etaDays,
-                    onValueChange = { etaDays = it },
-                    label = { Text("Estimated delivery (e.g. 3-5 days)") },
-                    modifier = Modifier.fillMaxWidth()
+                    value = viewModel.weight.value,
+                    onValueChange = { viewModel.weight.value = it },
+                    label = { Text("kg") },
+                    modifier = Modifier.fillMaxWidth(0.5f)
                 )
 
-                viewModel.statusMessage.value?.let {
-                    Spacer(Modifier.height(8.dp))
-                    Text(it, color = MaterialTheme.colorScheme.primary)
+                Spacer(Modifier.height(16.dp))
+                Text("Parcel Size", fontWeight = FontWeight.Bold)
+                Spacer(Modifier.height(4.dp))
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    OutlinedTextField(
+                        value = viewModel.length.value,
+                        onValueChange = { viewModel.length.value = it },
+                        label = { Text("Length (cm)") },
+                        modifier = Modifier.weight(1f)
+                    )
+                    Spacer(Modifier.width(6.dp))
+                    Text("×")
+                    Spacer(Modifier.width(6.dp))
+                    OutlinedTextField(
+                        value = viewModel.width.value,
+                        onValueChange = { viewModel.width.value = it },
+                        label = { Text("Width (cm)") },
+                        modifier = Modifier.weight(1f)
+                    )
+                    Spacer(Modifier.width(6.dp))
+                    Text("×")
+                    Spacer(Modifier.width(6.dp))
+                    OutlinedTextField(
+                        value = viewModel.height.value,
+                        onValueChange = { viewModel.height.value = it },
+                        label = { Text("Height (cm)") },
+                        modifier = Modifier.weight(1f)
+                    )
                 }
 
                 Spacer(Modifier.height(16.dp))
-                Button(
-                    onClick = {
-                        viewModel.createOption(
-                            name = name,
-                            cost = cost.toDoubleOrNull() ?: 0.0,
-                            etaDays = etaDays,
-                            onDone = { name = ""; cost = ""; etaDays = "" }
-                        )
-                    },
-                    enabled = name.isNotBlank() && cost.toDoubleOrNull() != null && !viewModel.isSaving.value,
-                    modifier = Modifier.fillMaxWidth()
-                ) {
-                    Text(if (viewModel.isSaving.value) "Adding..." else "Add Option")
+                Text("Dangerous Goods", fontWeight = FontWeight.Bold)
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    RadioButton(selected = !viewModel.dangerousGoods.value, onClick = { viewModel.dangerousGoods.value = false })
+                    Text("No")
+                    Spacer(Modifier.width(16.dp))
+                    RadioButton(selected = viewModel.dangerousGoods.value, onClick = { viewModel.dangerousGoods.value = true })
+                    Text("Yes")
                 }
 
                 Spacer(Modifier.height(24.dp))
                 Divider()
                 Spacer(Modifier.height(16.dp))
-                Text("My Shipping Options", fontWeight = FontWeight.Bold, style = MaterialTheme.typography.titleMedium)
-                Spacer(Modifier.height(8.dp))
-            }
+                Text("Shipping Fee", fontWeight = FontWeight.Bold, style = MaterialTheme.typography.titleMedium)
+                Spacer(Modifier.height(4.dp))
+                Text(
+                    "Turn on a channel and set your fee for it. Buyers will only see channels you've enabled.",
+                    style = MaterialTheme.typography.bodySmall
+                )
+                Spacer(Modifier.height(12.dp))
 
-            if (viewModel.isLoading.value) {
-                item {
-                    Box(Modifier.fillMaxWidth().padding(24.dp), contentAlignment = Alignment.Center) {
-                        CircularProgressIndicator()
-                    }
-                }
-            } else if (viewModel.options.value.isEmpty()) {
-                item { Text("No custom shipping options yet — buyers will see the default list.", style = MaterialTheme.typography.bodyMedium) }
-            } else {
-                items(viewModel.options.value, key = { it.id }) { option ->
+                ShippingChannelCatalog.all.forEach { def ->
+                    val enabled = viewModel.channelEnabled[def.key] ?: false
                     Row(
                         modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp),
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         Column(modifier = Modifier.weight(1f)) {
-                            Text(option.name, fontWeight = FontWeight.Medium)
-                            Text(
-                                "${if (option.cost > 0) "$${"%.2f".format(option.cost)}" else "Free"} · ${option.etaDays}",
-                                style = MaterialTheme.typography.bodySmall
-                            )
+                            Text(def.label, fontWeight = FontWeight.Medium)
+                            if (enabled) {
+                                OutlinedTextField(
+                                    value = viewModel.channelFee[def.key] ?: "0",
+                                    onValueChange = { viewModel.channelFee[def.key] = it },
+                                    label = { Text("Fee ($)") },
+                                    modifier = Modifier.width(140.dp)
+                                )
+                            }
                         }
-                        IconButton(onClick = { viewModel.deleteOption(option.id) }) {
-                            Icon(Icons.Default.Delete, contentDescription = "Delete")
-                        }
+                        Switch(
+                            checked = enabled,
+                            onCheckedChange = { viewModel.channelEnabled[def.key] = it }
+                        )
                     }
                     Divider()
                 }
+
+                Spacer(Modifier.height(24.dp))
+                Divider()
+                Spacer(Modifier.height(16.dp))
+                Text("Pre-Order", fontWeight = FontWeight.Bold)
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    RadioButton(selected = !viewModel.preOrder.value, onClick = { viewModel.preOrder.value = false })
+                    Text("No")
+                    Spacer(Modifier.width(16.dp))
+                    RadioButton(selected = viewModel.preOrder.value, onClick = { viewModel.preOrder.value = true })
+                    Text("Yes")
+                }
+                Spacer(Modifier.height(8.dp))
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Text("I will ship out within")
+                    Spacer(Modifier.width(8.dp))
+                    OutlinedTextField(
+                        value = viewModel.shipOutDays.value,
+                        onValueChange = { viewModel.shipOutDays.value = it },
+                        modifier = Modifier.width(80.dp)
+                    )
+                    Spacer(Modifier.width(8.dp))
+                    Text("day(s)")
+                }
+
+                viewModel.statusMessage.value?.let {
+                    Spacer(Modifier.height(16.dp))
+                    Text(it, color = MaterialTheme.colorScheme.primary)
+                }
+
+                Spacer(Modifier.height(24.dp))
+                Button(
+                    onClick = { viewModel.save(onDone = {}) },
+                    enabled = !viewModel.isSaving.value,
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Text(if (viewModel.isSaving.value) "Saving..." else "Save")
+                }
+                Spacer(Modifier.height(24.dp))
             }
         }
     }

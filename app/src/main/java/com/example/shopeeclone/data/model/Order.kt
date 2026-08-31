@@ -35,11 +35,37 @@ object ShippingOptions {
     )
 }
 
+data class ShippingChannelDef(val key: String, val label: String)
+
+object ShippingChannelCatalog {
+    val all = listOf(
+        ShippingChannelDef("standard", "Standard Doorstep Delivery"),
+        ShippingChannelDef("express", "Express Doorstep Delivery"),
+        ShippingChannelDef("self_collection", "Self Collection"),
+        ShippingChannelDef("bulky", "Bulky Delivery"),
+        ShippingChannelDef("instant", "Instant Delivery (60 mins)")
+    )
+
+    fun labelFor(key: String): String = all.find { it.key == key }?.label ?: key
+}
+
 @Serializable
-data class SellerShippingOption(
+data class SellerShippingSettings(
+    @SerialName("seller_id") val sellerId: String = "",
+    @SerialName("weight_kg") val weightKg: Double = 0.0,
+    @SerialName("length_cm") val lengthCm: Double = 0.0,
+    @SerialName("width_cm") val widthCm: Double = 0.0,
+    @SerialName("height_cm") val heightCm: Double = 0.0,
+    @SerialName("dangerous_goods") val dangerousGoods: Boolean = false,
+    @SerialName("pre_order") val preOrder: Boolean = false,
+    @SerialName("ship_out_days") val shipOutDays: Int = 1
+)
+
+@Serializable
+data class SellerShippingChannel(
     val id: String = "",
     @SerialName("seller_id") val sellerId: String = "",
-    val name: String = "",
-    val cost: Double = 0.0,
-    @SerialName("eta_days") val etaDays: String = ""
+    @SerialName("channel_key") val channelKey: String = "",
+    val enabled: Boolean = false,
+    val fee: Double = 0.0
 )

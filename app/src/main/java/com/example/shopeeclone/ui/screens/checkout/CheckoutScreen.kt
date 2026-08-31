@@ -95,7 +95,9 @@ fun CheckoutScreen(
                         )
                         Column {
                             Text("${option.name} — ${if (option.cost > 0) "$${"%.2f".format(option.cost)}" else "Free"}")
-                            Text("Estimated delivery: ${option.etaDays}", style = MaterialTheme.typography.bodySmall)
+                            if (option.etaDays.isNotBlank()) {
+                                Text("Estimated delivery: ${option.etaDays}", style = MaterialTheme.typography.bodySmall)
+                            }
                         }
                     }
                 }

@@ -6,6 +6,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.shopeeclone.data.model.CartItem
 import com.example.shopeeclone.data.model.Product
+import com.example.shopeeclone.data.model.ShippingChannelCatalog
 import com.example.shopeeclone.data.model.ShippingOption
 import com.example.shopeeclone.data.model.ShippingOptions
 import com.example.shopeeclone.data.model.Voucher
@@ -109,17 +110,20 @@ class CartViewModel(
 
     /**
      * Loads shipping options based on the currently *selected* items. If every
-     * selected item is from the same seller and that seller has configured their
-     * own options, those are used; otherwise falls back to the default list.
+     * selected item is from the same seller and that seller has enabled at least
+     * one shipping channel, those are used; otherwise falls back to the default list.
      */
     fun loadShippingOptionsForCart() {
         viewModelScope.launch {
             isLoadingShippingOptions.value = true
             val sellerIds = selectedItems().map { it.product.sellerId }.distinct()
             val options = if (sellerIds.size == 1 && sellerIds.first().isNotBlank()) {
-                val sellerOptions = shippingRepository.getSellerShippingOptions(sellerIds.first())
-                if (sellerOptions.isNotEmpty()) {
-                    sellerOptions.map { ShippingOption(it.name, it.cost, it.etaDays) }
+                val enabledChannels = shippingRepository.getChannels(sellerIds.first())
+                    .filter { it.enabled }
+                if (enabledChannels.isNotEmpty()) {
+                    enabledChannels.map {
+                        ShippingOption(ShippingChannelCatalog.labelFor(it.channelKey), it.fee, "")
+                    }
                 } else {
                     ShippingOptions.all
                 }
