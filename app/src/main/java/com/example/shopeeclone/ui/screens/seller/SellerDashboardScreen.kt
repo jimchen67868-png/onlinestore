@@ -144,7 +144,7 @@ fun SellerDashboardScreen(
     onBack: () -> Unit,
     onManageVouchers: () -> Unit,
     onViewStats: () -> Unit,
-    onManageShipping: () -> Unit,
+    onManageShipping: (String, String) -> Unit, // productId, productName
     viewModel: SellerViewModel = viewModel()
 ) {
     val context = LocalContext.current
@@ -208,7 +208,6 @@ fun SellerDashboardScreen(
                 navigationIcon = { IconButton(onClick = onBack) { Icon(Icons.Default.ArrowBack, contentDescription = "Back") } },
                 actions = {
                     TextButton(onClick = onViewStats) { Text("Stats") }
-                    TextButton(onClick = onManageShipping) { Text("Shipping") }
                     TextButton(onClick = onManageVouchers) { Text("Vouchers") }
                 }
             )
@@ -348,6 +347,9 @@ fun SellerDashboardScreen(
                         Column(modifier = Modifier.weight(1f)) {
                             Text(product.name, fontWeight = FontWeight.Medium)
                             Text("$${product.price} · Stock: ${product.stock}", style = MaterialTheme.typography.bodySmall)
+                        }
+                        TextButton(onClick = { onManageShipping(product.id, product.name) }) {
+                            Text("Ship")
                         }
                         IconButton(onClick = { startEditing(product) }) {
                             Icon(Icons.Default.Edit, contentDescription = "Edit")

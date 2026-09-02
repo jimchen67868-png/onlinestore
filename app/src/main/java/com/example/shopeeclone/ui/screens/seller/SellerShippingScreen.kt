@@ -14,16 +14,17 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import androidx.lifecycle.viewmodel.compose.viewModel
-import com.example.shopeeclone.data.model.SellerShippingChannel
-import com.example.shopeeclone.data.model.SellerShippingSettings
+import com.example.shopeeclone.data.model.ProductShippingChannel
 import com.example.shopeeclone.data.model.ShippingChannelCatalog
 import com.example.shopeeclone.data.repository.AuthRepository
+import com.example.shopeeclone.data.repository.ProductRepository
 import com.example.shopeeclone.data.repository.ShippingRepository
 import kotlinx.coroutines.launch
 import java.util.UUID
 
 class SellerShippingViewModel(
     private val authRepository: AuthRepository = AuthRepository(),
+    private val productRepository: ProductRepository = ProductRepository(),
     private val shippingRepository: ShippingRepository = ShippingRepository()
 ) : ViewModel() {
     private val sellerId: String
@@ -37,7 +38,7 @@ class SellerShippingViewModel(
     val preOrder = mutableStateOf(false)
     val shipOutDays = mutableStateOf("1")
 
-    // channelKey -> (enabled, feeText)
+    // channelKey -> enabled / fee text
     val channelEnabled = mutableStateMapOf<String, Boolean>()
     val channelFee = mutableStateMapOf<String, String>()
 
@@ -45,23 +46,19 @@ class SellerShippingViewModel(
     val isSaving = mutableStateOf(false)
     val statusMessage = mutableStateOf<String?>(null)
 
-    init {
-        load()
-    }
-
-    fun load() {
+    fun load(productId: String) {
         viewModelScope.launch {
             isLoading.value = true
-            shippingRepository.getSettings(sellerId)?.let {
-                weight.value = if (it.weightKg > 0) it.weightKg.toString() else ""
-                length.value = if (it.lengthCm > 0) it.lengthCm.toString() else ""
-                width.value = if (it.widthCm > 0) it.widthCm.toString() else ""
-                height.value = if (it.heightCm > 0) it.heightCm.toString() else ""
-                dangerousGoods.value = it.dangerousGoods
-                preOrder.value = it.preOrder
-                shipOutDays.value = it.shipOutDays.toString()
+            productRepository.getProductById(productId)?.let { product ->
+                weight.value = if (product.weightKg > 0) product.weightKg.toString() else ""
+                length.value = if (product.lengthCm > 0) product.lengthCm.toString() else ""
+                width.value = if (product.widthCm > 0) product.widthCm.toString() else ""
+                height.value = if (product.heightCm > 0) product.heightCm.toString() else ""
+                dangerousGoods.value = product.dangerousGoods
+                preOrder.value = product.preOrder
+                shipOutDays.value = product.shipOutDays.toString()
             }
-            val existingChannels = shippingRepository.getChannels(sellerId).associateBy { it.channelKey }
+            val existingChannels = shippingRepository.getProductChannels(productId).associateBy { it.channelKey }
             ShippingChannelCatalog.all.forEach { def ->
                 val existing = existingChannels[def.key]
                 channelEnabled[def.key] = existing?.enabled ?: false
@@ -71,28 +68,29 @@ class SellerShippingViewModel(
         }
     }
 
-    fun save(onDone: () -> Unit) {
+    fun save(productId: String, onDone: () -> Unit) {
         viewModelScope.launch {
             isSaving.value = true
             statusMessage.value = null
             try {
-                shippingRepository.upsertSettings(
-                    SellerShippingSettings(
-                        sellerId = sellerId,
-                        weightKg = weight.value.toDoubleOrNull() ?: 0.0,
-                        lengthCm = length.value.toDoubleOrNull() ?: 0.0,
-                        widthCm = width.value.toDoubleOrNull() ?: 0.0,
-                        heightCm = height.value.toDoubleOrNull() ?: 0.0,
-                        dangerousGoods = dangerousGoods.value,
-                        preOrder = preOrder.value,
-                        shipOutDays = shipOutDays.value.toIntOrNull() ?: 1
-                    )
-                ).getOrThrow()
+                val existing = productRepository.getProductById(productId)
+                    ?: throw IllegalStateException("Product not found")
+                val updated = existing.copy(
+                    weightKg = weight.value.toDoubleOrNull() ?: 0.0,
+                    lengthCm = length.value.toDoubleOrNull() ?: 0.0,
+                    widthCm = width.value.toDoubleOrNull() ?: 0.0,
+                    heightCm = height.value.toDoubleOrNull() ?: 0.0,
+                    dangerousGoods = dangerousGoods.value,
+                    preOrder = preOrder.value,
+                    shipOutDays = shipOutDays.value.toIntOrNull() ?: 1
+                )
+                productRepository.updateProduct(updated).getOrThrow()
 
                 ShippingChannelCatalog.all.forEach { def ->
-                    shippingRepository.upsertChannel(
-                        SellerShippingChannel(
+                    shippingRepository.upsertProductChannel(
+                        ProductShippingChannel(
                             id = UUID.randomUUID().toString(),
+                            productId = productId,
                             sellerId = sellerId,
                             channelKey = def.key,
                             enabled = channelEnabled[def.key] ?: false,
@@ -115,13 +113,17 @@ class SellerShippingViewModel(
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun SellerShippingScreen(
+    productId: String,
+    productName: String,
     onBack: () -> Unit,
     viewModel: SellerShippingViewModel = viewModel()
 ) {
+    LaunchedEffect(productId) { viewModel.load(productId) }
+
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("Shipping") },
+                title = { Text("Shipping · $productName", maxLines = 1) },
                 navigationIcon = { IconButton(onClick = onBack) { Icon(Icons.Default.ArrowBack, contentDescription = "Back") } }
             )
         }
@@ -138,12 +140,6 @@ fun SellerShippingScreen(
                     .verticalScroll(rememberScrollState())
                     .padding(16.dp)
             ) {
-                Text(
-                    "These settings apply shop-wide to all your products.",
-                    style = MaterialTheme.typography.bodySmall
-                )
-                Spacer(Modifier.height(16.dp))
-
                 Text("Weight", fontWeight = FontWeight.Bold)
                 Spacer(Modifier.height(4.dp))
                 OutlinedTextField(
@@ -199,7 +195,7 @@ fun SellerShippingScreen(
                 Text("Shipping Fee", fontWeight = FontWeight.Bold, style = MaterialTheme.typography.titleMedium)
                 Spacer(Modifier.height(4.dp))
                 Text(
-                    "Turn on a channel and set your fee for it. Buyers will only see channels you've enabled.",
+                    "Turn on a channel and set the fee for this product. Buyers will only see channels you've enabled.",
                     style = MaterialTheme.typography.bodySmall
                 )
                 Spacer(Modifier.height(12.dp))
@@ -260,7 +256,7 @@ fun SellerShippingScreen(
 
                 Spacer(Modifier.height(24.dp))
                 Button(
-                    onClick = { viewModel.save(onDone = {}) },
+                    onClick = { viewModel.save(productId, onDone = {}) },
                     enabled = !viewModel.isSaving.value,
                     modifier = Modifier.fillMaxWidth()
                 ) {

@@ -17,7 +17,14 @@ data class Product(
     @SerialName("seller_name") val sellerName: String = "",
     val stock: Int = 0,
     val rating: Double = 0.0,
-    @SerialName("sold_count") val soldCount: Int = 0
+    @SerialName("sold_count") val soldCount: Int = 0,
+    @SerialName("weight_kg") val weightKg: Double = 0.0,
+    @SerialName("length_cm") val lengthCm: Double = 0.0,
+    @SerialName("width_cm") val widthCm: Double = 0.0,
+    @SerialName("height_cm") val heightCm: Double = 0.0,
+    @SerialName("dangerous_goods") val dangerousGoods: Boolean = false,
+    @SerialName("pre_order") val preOrder: Boolean = false,
+    @SerialName("ship_out_days") val shipOutDays: Int = 1
 )
 
 object ProductCategories {

@@ -109,16 +109,20 @@ class CartViewModel(
     fun finalTotal(): Double = (total() - discountAmount() + shippingCost()).coerceAtLeast(0.0)
 
     /**
-     * Loads shipping options based on the currently *selected* items. If every
-     * selected item is from the same seller and that seller has enabled at least
-     * one shipping channel, those are used; otherwise falls back to the default list.
+     * Loads shipping options based on the currently *selected* items. Since shipping
+     * channels are configured per product (matching Shopee's per-listing shipping
+     * settings), this only uses a seller's custom channels when the selection is a
+     * single distinct product; otherwise (multiple different products, even from the
+     * same seller) it falls back to the default Standard/Express/Free list, since
+     * combining several products' shipping configs into one coherent choice isn't
+     * well-defined.
      */
     fun loadShippingOptionsForCart() {
         viewModelScope.launch {
             isLoadingShippingOptions.value = true
-            val sellerIds = selectedItems().map { it.product.sellerId }.distinct()
-            val options = if (sellerIds.size == 1 && sellerIds.first().isNotBlank()) {
-                val enabledChannels = shippingRepository.getChannels(sellerIds.first())
+            val distinctProductIds = selectedItems().map { it.product.id }.distinct()
+            val options = if (distinctProductIds.size == 1) {
+                val enabledChannels = shippingRepository.getProductChannels(distinctProductIds.first())
                     .filter { it.enabled }
                 if (enabledChannels.isNotEmpty()) {
                     enabledChannels.map {

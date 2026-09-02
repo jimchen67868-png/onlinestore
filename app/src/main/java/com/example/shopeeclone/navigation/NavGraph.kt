@@ -136,7 +136,9 @@ fun ShopeeNavGraph(navController: NavHostController = rememberNavController()) {
                 onBack = { navController.popBackStack() },
                 onManageVouchers = { navController.navigate(Screen.SellerVouchers.route) },
                 onViewStats = { navController.navigate(Screen.SellerStats.route) },
-                onManageShipping = { navController.navigate(Screen.SellerShipping.route) }
+                onManageShipping = { productId, productName ->
+                    navController.navigate(Screen.SellerShipping.createRoute(productId, productName))
+                }
             )
         }
 
@@ -148,8 +150,21 @@ fun ShopeeNavGraph(navController: NavHostController = rememberNavController()) {
             SellerStatsScreen(onBack = { navController.popBackStack() })
         }
 
-        composable(Screen.SellerShipping.route) {
-            SellerShippingScreen(onBack = { navController.popBackStack() })
+        composable(
+            route = Screen.SellerShipping.route,
+            arguments = listOf(
+                navArgument("productId") { type = NavType.StringType },
+                navArgument("productName") { type = NavType.StringType }
+            )
+        ) { backStackEntry ->
+            val productId = backStackEntry.arguments?.getString("productId") ?: ""
+            val encodedName = backStackEntry.arguments?.getString("productName") ?: ""
+            val productName = java.net.URLDecoder.decode(encodedName, "UTF-8")
+            SellerShippingScreen(
+                productId = productId,
+                productName = productName,
+                onBack = { navController.popBackStack() }
+            )
         }
 
         composable(
@@ -196,7 +211,7 @@ fun ShopeeNavGraph(navController: NavHostController = rememberNavController()) {
                 navArgument("productImageUrl") { type = NavType.StringType }
             )
         ) { backStackEntry ->
-            fun dec(key: String) = java.net.URLDecoder.decode(backStackEntry.arguments?.getString(key) ?: "", "UTF-8")
+            fun dec(key: String) = Screen.Chat.decode(backStackEntry.arguments?.getString(key) ?: "")
             ChatScreen(
                 buyerId = dec("buyerId"),
                 buyerName = dec("buyerName"),

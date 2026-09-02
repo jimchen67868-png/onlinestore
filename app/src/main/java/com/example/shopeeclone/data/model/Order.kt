@@ -50,20 +50,9 @@ object ShippingChannelCatalog {
 }
 
 @Serializable
-data class SellerShippingSettings(
-    @SerialName("seller_id") val sellerId: String = "",
-    @SerialName("weight_kg") val weightKg: Double = 0.0,
-    @SerialName("length_cm") val lengthCm: Double = 0.0,
-    @SerialName("width_cm") val widthCm: Double = 0.0,
-    @SerialName("height_cm") val heightCm: Double = 0.0,
-    @SerialName("dangerous_goods") val dangerousGoods: Boolean = false,
-    @SerialName("pre_order") val preOrder: Boolean = false,
-    @SerialName("ship_out_days") val shipOutDays: Int = 1
-)
-
-@Serializable
-data class SellerShippingChannel(
+data class ProductShippingChannel(
     val id: String = "",
+    @SerialName("product_id") val productId: String = "",
     @SerialName("seller_id") val sellerId: String = "",
     @SerialName("channel_key") val channelKey: String = "",
     val enabled: Boolean = false,
