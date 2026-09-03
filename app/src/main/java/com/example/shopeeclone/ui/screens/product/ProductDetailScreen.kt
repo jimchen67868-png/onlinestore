@@ -27,6 +27,7 @@ import coil.compose.AsyncImage
 import com.example.shopeeclone.data.model.Product
 import com.example.shopeeclone.data.repository.AuthRepository
 import com.example.shopeeclone.data.repository.FollowRepository
+import com.example.shopeeclone.data.repository.LikeRepository
 import com.example.shopeeclone.viewmodel.CartViewModel
 import com.example.shopeeclone.viewmodel.ProductViewModel
 import kotlinx.coroutines.launch
@@ -40,10 +41,12 @@ fun ProductDetailScreen(
     onBack: () -> Unit,
     onGoToCart: () -> Unit,
     onVisitShop: (String, String) -> Unit,
+    onProductClick: (String) -> Unit,
     onChatWithSeller: (String, String, Product) -> Unit, // buyerId, buyerName, product
     productViewModel: ProductViewModel = viewModel(),
     cartViewModel: CartViewModel = viewModel(),
     followRepository: FollowRepository = FollowRepository(),
+    likeRepository: LikeRepository = LikeRepository(),
     authRepository: AuthRepository = AuthRepository()
 ) {
     var product by remember { mutableStateOf<Product?>(null) }
@@ -51,6 +54,8 @@ fun ProductDetailScreen(
     var isFetching by remember { mutableStateOf(true) }
     var isFollowing by remember { mutableStateOf(false) }
     var isTogglingFollow by remember { mutableStateOf(false) }
+    var isLiked by remember { mutableStateOf(false) }
+    var isTogglingLike by remember { mutableStateOf(false) }
     var fullscreenImageUrl by remember { mutableStateOf<String?>(null) }
     val snackbarHostState = remember { SnackbarHostState() }
     val coroutineScope = rememberCoroutineScope()
@@ -59,7 +64,10 @@ fun ProductDetailScreen(
         isFetching = true
         product = productViewModel.getProduct(productId)
         isFetching = false
-        product?.let { isFollowing = followRepository.isFollowing(it.sellerId) }
+        product?.let {
+            isFollowing = followRepository.isFollowing(it.sellerId)
+            isLiked = likeRepository.isLiked(it.id)
+        }
     }
 
     Scaffold(
@@ -192,6 +200,23 @@ fun ProductDetailScreen(
                                 color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f)
                             )
                         }
+                        Spacer(Modifier.weight(1f))
+                        Text(
+                            if (isLiked) "♥" else "♡",
+                            style = MaterialTheme.typography.headlineSmall,
+                            color = MaterialTheme.colorScheme.primary,
+                            modifier = Modifier.clickable(enabled = !isTogglingLike) {
+                                isTogglingLike = true
+                                coroutineScope.launch {
+                                    if (isLiked) {
+                                        likeRepository.unlike(p.id).onSuccess { isLiked = false }
+                                    } else {
+                                        likeRepository.like(p.id).onSuccess { isLiked = true }
+                                    }
+                                    isTogglingLike = false
+                                }
+                            }
+                        )
                     }
                     Row(
                         verticalAlignment = Alignment.CenterVertically,
@@ -248,8 +273,23 @@ fun ProductDetailScreen(
                     Spacer(Modifier.height(16.dp))
                     Text("Description", fontWeight = FontWeight.Bold)
                     Text(p.description, style = MaterialTheme.typography.bodyMedium)
-                    // Extra bottom space so the last line of a long description
-                    // isn't flush against the sticky Add to Cart / Buy Now bar.
+
+                    Spacer(Modifier.height(24.dp))
+                    Divider()
+                    Spacer(Modifier.height(16.dp))
+                    RelatedProductsSection(
+                        productId = p.id,
+                        sellerId = p.sellerId,
+                        sellerName = p.sellerName,
+                        category = p.category,
+                        onProductClick = onProductClick,
+                        onVisitShop = onVisitShop
+                    )
+                    Divider()
+                    Spacer(Modifier.height(16.dp))
+                    ReviewsSection(productId = p.id)
+                    // Extra bottom space so the last review isn't flush against
+                    // the sticky Add to Cart / Buy Now bar.
                     Spacer(Modifier.height(24.dp))
                 }
             }

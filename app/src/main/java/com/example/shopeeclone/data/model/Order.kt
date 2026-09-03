@@ -4,7 +4,15 @@ import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 
 @Serializable
-enum class OrderStatus { PENDING, PAID, SHIPPED, DELIVERED, CANCELLED }
+enum class OrderStatus(val label: String) {
+    UNPAID("To Pay"),
+    TO_SHIP("To Ship"),
+    SHIPPED("To Receive"),
+    COMPLETED("Completed"),
+    RETURN_REQUESTED("Return/Refund"),
+    REFUNDED("Refunded"),
+    CANCELLED("Cancelled")
+}
 
 @Serializable
 data class Order(
@@ -14,10 +22,11 @@ data class Order(
     @SerialName("total_amount") val totalAmount: Double = 0.0,
     @SerialName("discount_amount") val discountAmount: Double = 0.0,
     @SerialName("voucher_code") val voucherCode: String = "",
-    val status: OrderStatus = OrderStatus.PENDING,
+    val status: OrderStatus = OrderStatus.UNPAID,
     @SerialName("shipping_address") val shippingAddress: String = "",
     @SerialName("shipping_method") val shippingMethod: String = "Standard",
     @SerialName("shipping_cost") val shippingCost: Double = 0.0,
+    @SerialName("return_reason") val returnReason: String = "",
     @SerialName("created_at") val createdAt: String? = null // set by DB default now()
 )
 

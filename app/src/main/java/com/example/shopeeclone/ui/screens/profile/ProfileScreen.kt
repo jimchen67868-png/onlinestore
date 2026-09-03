@@ -18,6 +18,7 @@ fun ProfileScreen(
     onEditProfileClick: () -> Unit,
     onFollowedShopsClick: () -> Unit,
     onChatListClick: () -> Unit,
+    onWishlistClick: () -> Unit,
     onBack: () -> Unit
 ) {
     Scaffold(
@@ -37,6 +38,11 @@ fun ProfileScreen(
             ListItem(
                 headlineContent = { Text("My Orders") },
                 modifier = Modifier.clickableRow(onOrderHistoryClick)
+            )
+            Divider()
+            ListItem(
+                headlineContent = { Text("My Likes") },
+                modifier = Modifier.clickableRow(onWishlistClick)
             )
             Divider()
             ListItem(

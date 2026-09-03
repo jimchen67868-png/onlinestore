@@ -152,7 +152,7 @@ class ChatViewModel(
                 mediaType = "order",
                 orderId = order.id,
                 orderTotal = order.totalAmount,
-                orderStatus = order.status.name,
+                orderStatus = order.status.label,
                 orderSummary = firstItemName + extra
             )
             messages.value = chatRepository.getMessages(buyerId, sellerId)
@@ -400,7 +400,7 @@ fun ChatScreen(
                             ) {
                                 Text("Order #${order.id.take(8)}", fontWeight = FontWeight.Medium)
                                 Text(
-                                    "${order.items.size} item(s) · $${"%.2f".format(order.totalAmount)} · ${order.status.name}",
+                                    "${order.items.size} item(s) · $${"%.2f".format(order.totalAmount)} · ${order.status.label}",
                                     style = MaterialTheme.typography.bodySmall
                                 )
                             }

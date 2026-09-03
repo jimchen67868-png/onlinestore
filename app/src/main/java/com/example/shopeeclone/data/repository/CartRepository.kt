@@ -99,7 +99,7 @@ class OrderRepository(
             totalAmount = (subtotal - discountAmount + shippingCost).coerceAtLeast(0.0),
             discountAmount = discountAmount,
             voucherCode = voucherCode,
-            status = OrderStatus.PENDING,
+            status = OrderStatus.UNPAID,
             shippingAddress = address,
             shippingMethod = shippingMethod,
             shippingCost = shippingCost
@@ -133,4 +133,35 @@ class OrderRepository(
     } catch (e: Exception) {
         emptyList()
     }
+
+    suspend fun updateOrderStatus(orderId: String, status: OrderStatus): Result<Unit> = try {
+        client.postgrest["orders"].update(
+            OrderStatusUpdate(status = status)
+        ) {
+            filter { eq("id", orderId) }
+        }
+        Result.success(Unit)
+    } catch (e: Exception) {
+        Result.failure(e)
+    }
+
+    suspend fun requestReturn(orderId: String, reason: String): Result<Unit> = try {
+        client.postgrest["orders"].update(
+            OrderReturnUpdate(status = OrderStatus.RETURN_REQUESTED, returnReason = reason)
+        ) {
+            filter { eq("id", orderId) }
+        }
+        Result.success(Unit)
+    } catch (e: Exception) {
+        Result.failure(e)
+    }
 }
+
+@kotlinx.serialization.Serializable
+private data class OrderStatusUpdate(val status: OrderStatus)
+
+@kotlinx.serialization.Serializable
+private data class OrderReturnUpdate(
+    val status: OrderStatus,
+    @kotlinx.serialization.SerialName("return_reason") val returnReason: String
+)

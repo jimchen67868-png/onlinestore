@@ -55,4 +55,6 @@ sealed class Screen(val route: String) {
             return "seller_shipping/$productId/$encodedName"
         }
     }
+    object SellerOrders : Screen("seller_orders")
+    object Wishlist : Screen("wishlist")
 }

@@ -20,6 +20,8 @@ import com.example.shopeeclone.ui.screens.seller.SellerDashboardScreen
 import com.example.shopeeclone.ui.screens.seller.SellerVoucherScreen
 import com.example.shopeeclone.ui.screens.seller.SellerStatsScreen
 import com.example.shopeeclone.ui.screens.seller.SellerShippingScreen
+import com.example.shopeeclone.ui.screens.seller.SellerOrdersScreen
+import com.example.shopeeclone.ui.screens.wishlist.WishlistScreen
 import com.example.shopeeclone.ui.screens.shop.SellerShopScreen
 import com.example.shopeeclone.ui.screens.shop.FollowedShopsScreen
 import com.example.shopeeclone.ui.screens.chat.ChatScreen
@@ -72,6 +74,7 @@ fun ShopeeNavGraph(navController: NavHostController = rememberNavController()) {
                 onVisitShop = { sellerId, sellerName ->
                     navController.navigate(Screen.SellerShop.createRoute(sellerId, sellerName))
                 },
+                onProductClick = { id -> navController.navigate(Screen.ProductDetail.createRoute(id)) },
                 onChatWithSeller = { buyerId, buyerName, product ->
                     navController.navigate(
                         Screen.Chat.createRoute(
@@ -123,7 +126,15 @@ fun ShopeeNavGraph(navController: NavHostController = rememberNavController()) {
                 onEditProfileClick = { navController.navigate(Screen.EditProfile.route) },
                 onFollowedShopsClick = { navController.navigate(Screen.FollowedShops.route) },
                 onChatListClick = { navController.navigate(Screen.ChatList.route) },
+                onWishlistClick = { navController.navigate(Screen.Wishlist.route) },
                 onBack = { navController.popBackStack() }
+            )
+        }
+
+        composable(Screen.Wishlist.route) {
+            WishlistScreen(
+                onBack = { navController.popBackStack() },
+                onProductClick = { id -> navController.navigate(Screen.ProductDetail.createRoute(id)) }
             )
         }
 
@@ -138,7 +149,8 @@ fun ShopeeNavGraph(navController: NavHostController = rememberNavController()) {
                 onViewStats = { navController.navigate(Screen.SellerStats.route) },
                 onManageShipping = { productId, productName ->
                     navController.navigate(Screen.SellerShipping.createRoute(productId, productName))
-                }
+                },
+                onManageOrders = { navController.navigate(Screen.SellerOrders.route) }
             )
         }
 
@@ -148,6 +160,10 @@ fun ShopeeNavGraph(navController: NavHostController = rememberNavController()) {
 
         composable(Screen.SellerStats.route) {
             SellerStatsScreen(onBack = { navController.popBackStack() })
+        }
+
+        composable(Screen.SellerOrders.route) {
+            SellerOrdersScreen(onBack = { navController.popBackStack() })
         }
 
         composable(
